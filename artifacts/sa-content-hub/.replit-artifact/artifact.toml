@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SA Content Hub"
+version = "1.0.0"
+id = "artifacts/sa-content-hub"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18875
+
+[services.development]
+run = "pnpm --filter @workspace/sa-content-hub run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sa-content-hub", "run", "build" ]
+publicDir = "artifacts/sa-content-hub/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18875"
+BASE_PATH = "/"

@@ -8,3 +8,181 @@
 export interface HealthStatus {
   status: string;
 }
+
+export type BusinessStatus =
+  (typeof BusinessStatus)[keyof typeof BusinessStatus];
+
+export const BusinessStatus = {
+  pending: "pending",
+  published: "published",
+  skipped: "skipped",
+} as const;
+
+export interface Business {
+  id: number;
+  name: string;
+  website?: string | null;
+  province?: string | null;
+  industry?: string | null;
+  notes?: string | null;
+  status: BusinessStatus;
+  addedAt: string;
+}
+
+export interface CreateBusinessBody {
+  name: string;
+  website?: string | null;
+  province?: string | null;
+  industry?: string | null;
+  notes?: string | null;
+}
+
+export type UpdateBusinessBodyStatus =
+  (typeof UpdateBusinessBodyStatus)[keyof typeof UpdateBusinessBodyStatus];
+
+export const UpdateBusinessBodyStatus = {
+  pending: "pending",
+  published: "published",
+  skipped: "skipped",
+} as const;
+
+export interface UpdateBusinessBody {
+  name?: string;
+  website?: string | null;
+  province?: string | null;
+  industry?: string | null;
+  notes?: string | null;
+  status?: UpdateBusinessBodyStatus;
+}
+
+export type ContentEntryStatus =
+  (typeof ContentEntryStatus)[keyof typeof ContentEntryStatus];
+
+export const ContentEntryStatus = {
+  draft: "draft",
+  pending_review: "pending_review",
+  approved: "approved",
+  published: "published",
+  rejected: "rejected",
+} as const;
+
+export interface ContentEntry {
+  id: number;
+  businessId: number;
+  businessName: string;
+  founderName?: string | null;
+  founderBio?: string | null;
+  standoutProduct?: string | null;
+  productDescription?: string | null;
+  businessDescription?: string | null;
+  location?: string | null;
+  madeInSA?: string | null;
+  callToAction?: string | null;
+  websiteUrl?: string | null;
+  status: ContentEntryStatus;
+  rejectionNote?: string | null;
+  generatedAt?: string | null;
+  approvedAt?: string | null;
+  publishedAt?: string | null;
+  scheduledDate?: string | null;
+}
+
+export interface UpdateContentBody {
+  founderName?: string | null;
+  founderBio?: string | null;
+  standoutProduct?: string | null;
+  productDescription?: string | null;
+  businessDescription?: string | null;
+  location?: string | null;
+  madeInSA?: string | null;
+  callToAction?: string | null;
+}
+
+export interface RejectContentBody {
+  note?: string | null;
+}
+
+export interface ActivityItem {
+  id: number;
+  type: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface DashboardStats {
+  totalBusinesses: number;
+  pendingReview: number;
+  publishedThisMonth: number;
+  totalPublished: number;
+  nextScheduledDate?: string | null;
+  recentActivity: ActivityItem[];
+}
+
+export type NotificationType =
+  (typeof NotificationType)[keyof typeof NotificationType];
+
+export const NotificationType = {
+  content_ready: "content_ready",
+  published: "published",
+  rejected: "rejected",
+  system: "system",
+} as const;
+
+export interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: NotificationType;
+  read: boolean;
+  contentId?: number | null;
+  createdAt: string;
+}
+
+export interface AppSettings {
+  notificationEmail?: string | null;
+  supabaseUrl?: string | null;
+  supabaseTableName?: string | null;
+  dailyScheduleTime?: string | null;
+  emailNotificationsEnabled: boolean;
+}
+
+export interface UpdateSettingsBody {
+  notificationEmail?: string | null;
+  supabaseUrl?: string | null;
+  supabaseAnonKey?: string | null;
+  supabaseTableName?: string | null;
+  dailyScheduleTime?: string | null;
+  emailNotificationsEnabled?: boolean;
+}
+
+export type ListBusinessesParams = {
+  status?: ListBusinessesStatus;
+};
+
+export type ListBusinessesStatus =
+  (typeof ListBusinessesStatus)[keyof typeof ListBusinessesStatus];
+
+export const ListBusinessesStatus = {
+  pending: "pending",
+  published: "published",
+  skipped: "skipped",
+} as const;
+
+export type ListContentParams = {
+  status?: ListContentStatus;
+};
+
+export type ListContentStatus =
+  (typeof ListContentStatus)[keyof typeof ListContentStatus];
+
+export const ListContentStatus = {
+  draft: "draft",
+  pending_review: "pending_review",
+  approved: "approved",
+  published: "published",
+  rejected: "rejected",
+} as const;
+
+export type ListNotificationsParams = {
+  unread?: boolean;
+};

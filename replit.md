@@ -1,8 +1,8 @@
-# Workspace
+# SA Content Hub
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+A content automation dashboard for finding South African businesses, generating website page content via AI, and pushing approved content to a Lovable/Supabase site. One new business is featured per day.
 
 ## Stack
 
@@ -13,15 +13,62 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **API codegen**: Orval (from OpenAPI spec in `lib/api-spec`)
+- **Frontend**: React + Vite (at path `/`)
+- **AI**: Anthropic Claude (`claude-haiku-4-5`) via Replit AI integration
+- **Design**: Warm ochre/earth SA palette (Inter + Playfair Display fonts)
+
+## Architecture
+
+```
+artifacts/
+  sa-content-hub/     — React+Vite frontend (path: /)
+  api-server/         — Express API server (path: /api)
+lib/
+  db/                 — Drizzle ORM schema + migrations
+  api-spec/           — OpenAPI spec (source of truth)
+  api-client-react/   — Orval-generated React Query hooks
+  api-zod/            — Orval-generated Zod schemas
+  integrations-anthropic-ai/ — Anthropic AI client
+```
+
+## Database Tables
+
+- `businesses` — SA business seed list (name, website, province, industry, status)
+- `content_entries` — AI-generated content per business (founder, product, location, etc.)
+- `notifications` — In-app notifications for content ready/approved/rejected
+- `app_settings` — Supabase connection config, notification email, schedule time
+- `activity_log` — Timeline of all system events
+
+## Key Features
+
+1. **Dashboard** — Stats, activity feed, one-click content generation
+2. **Business List** — Add/edit/delete SA businesses for the pipeline
+3. **Content Queue** — Filter and review AI-generated content
+4. **Content Detail** — Edit AI content, approve (pushes to Supabase) or reject
+5. **Notifications** — In-app alerts when content is ready for review
+6. **Settings** — Supabase URL/key/table, notification email, daily schedule time
+
+## Content Flow
+
+1. Click "Generate Today's Content" → picks a pending business → calls Claude AI → saves as `pending_review` → creates notification
+2. Review content in Content Queue → click into detail page
+3. Edit any fields, then Approve → automatically pushes to Supabase if configured → status becomes `published`
+4. Or Reject with a note → status becomes `rejected`
+
+## Supabase Push
+
+On approval, content is POSTed to `{supabaseUrl}/rest/v1/{supabaseTableName}` with columns:
+`business_name`, `founder_name`, `founder_bio`, `standout_product`, `product_description`,
+`business_description`, `location`, `made_in_sa`, `call_to_action`, `website_url`, `scheduled_date`, `published_at`
 
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
+- `pnpm run typecheck:libs` — build composite libs (run before artifact typechecks)
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+## AI Model
+
+Uses `claude-haiku-4-5` via `@workspace/integrations-anthropic-ai`. Falls back to placeholder content if AI call fails.

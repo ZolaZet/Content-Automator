@@ -8,9 +8,395 @@
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
+});
+
+/**
+ * @summary List all businesses in the seed list
+ */
+export const ListBusinessesQueryParams = zod.object({
+  status: zod.enum(["pending", "published", "skipped"]).optional(),
+});
+
+export const ListBusinessesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  website: zod.string().nullish(),
+  province: zod.string().nullish(),
+  industry: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["pending", "published", "skipped"]),
+  addedAt: zod.coerce.date(),
+});
+export const ListBusinessesResponse = zod.array(ListBusinessesResponseItem);
+
+/**
+ * @summary Add a business to the seed list
+ */
+export const CreateBusinessBody = zod.object({
+  name: zod.string(),
+  website: zod.string().nullish(),
+  province: zod.string().nullish(),
+  industry: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Get a single business by ID
+ */
+export const GetBusinessParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBusinessResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  website: zod.string().nullish(),
+  province: zod.string().nullish(),
+  industry: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["pending", "published", "skipped"]),
+  addedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a business record
+ */
+export const UpdateBusinessParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateBusinessBody = zod.object({
+  name: zod.string().optional(),
+  website: zod.string().nullish(),
+  province: zod.string().nullish(),
+  industry: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["pending", "published", "skipped"]).optional(),
+});
+
+export const UpdateBusinessResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  website: zod.string().nullish(),
+  province: zod.string().nullish(),
+  industry: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  status: zod.enum(["pending", "published", "skipped"]),
+  addedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a business from the seed list
+ */
+export const DeleteBusinessParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List all generated content entries
+ */
+export const ListContentQueryParams = zod.object({
+  status: zod
+    .enum(["draft", "pending_review", "approved", "published", "rejected"])
+    .optional(),
+});
+
+export const ListContentResponseItem = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+export const ListContentResponse = zod.array(ListContentResponseItem);
+
+/**
+ * @summary Get a single content entry
+ */
+export const GetContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Update content fields (edit before approval)
+ */
+export const UpdateContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateContentBody = zod.object({
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+});
+
+export const UpdateContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Approve content and push to Supabase
+ */
+export const ApproveContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ApproveContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Reject content (mark for regeneration)
+ */
+export const RejectContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RejectContentBody = zod.object({
+  note: zod.string().nullish(),
+});
+
+export const RejectContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Trigger AI content generation for today's business
+ */
+export const GenerateContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Dashboard summary stats
+ */
+export const GetDashboardStatsResponse = zod.object({
+  totalBusinesses: zod.number(),
+  pendingReview: zod.number(),
+  publishedThisMonth: zod.number(),
+  totalPublished: zod.number(),
+  nextScheduledDate: zod.string().nullish(),
+  recentActivity: zod.array(
+    zod.object({
+      id: zod.number(),
+      type: zod.string(),
+      description: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary List notifications for the user
+ */
+export const ListNotificationsQueryParams = zod.object({
+  unread: zod.coerce.boolean().optional(),
+});
+
+export const ListNotificationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  message: zod.string(),
+  type: zod.enum(["content_ready", "published", "rejected", "system"]),
+  read: zod.boolean(),
+  contentId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListNotificationsResponse = zod.array(
+  ListNotificationsResponseItem,
+);
+
+/**
+ * @summary Mark a notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  message: zod.string(),
+  type: zod.enum(["content_ready", "published", "rejected", "system"]),
+  read: zod.boolean(),
+  contentId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get app settings (email, Supabase config, schedule time)
+ */
+export const GetSettingsResponse = zod.object({
+  notificationEmail: zod.string().nullish(),
+  supabaseUrl: zod.string().nullish(),
+  supabaseTableName: zod.string().nullish(),
+  dailyScheduleTime: zod.string().nullish(),
+  emailNotificationsEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Update app settings
+ */
+export const UpdateSettingsBody = zod.object({
+  notificationEmail: zod.string().nullish(),
+  supabaseUrl: zod.string().nullish(),
+  supabaseAnonKey: zod.string().nullish(),
+  supabaseTableName: zod.string().nullish(),
+  dailyScheduleTime: zod.string().nullish(),
+  emailNotificationsEnabled: zod.boolean().optional(),
+});
+
+export const UpdateSettingsResponse = zod.object({
+  notificationEmail: zod.string().nullish(),
+  supabaseUrl: zod.string().nullish(),
+  supabaseTableName: zod.string().nullish(),
+  dailyScheduleTime: zod.string().nullish(),
+  emailNotificationsEnabled: zod.boolean(),
 });

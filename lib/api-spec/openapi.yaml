@@ -10,13 +10,20 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: businesses
+    description: South African business management
+  - name: content
+    description: Content generation and management
+  - name: notifications
+    description: Notification management
+  - name: schedule
+    description: Daily scheduling
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,305 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /businesses:
+    get:
+      operationId: listBusinesses
+      tags: [businesses]
+      summary: List all businesses in the seed list
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, published, skipped]
+          required: false
+      responses:
+        "200":
+          description: List of businesses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Business"
+    post:
+      operationId: createBusiness
+      tags: [businesses]
+      summary: Add a business to the seed list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBusinessBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+
+  /businesses/{id}:
+    get:
+      operationId: getBusiness
+      tags: [businesses]
+      summary: Get a single business by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Business found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+    patch:
+      operationId: updateBusiness
+      tags: [businesses]
+      summary: Update a business record
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBusinessBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Business"
+    delete:
+      operationId: deleteBusiness
+      tags: [businesses]
+      summary: Remove a business from the seed list
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /content:
+    get:
+      operationId: listContent
+      tags: [content]
+      summary: List all generated content entries
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, pending_review, approved, published, rejected]
+          required: false
+      responses:
+        "200":
+          description: List of content entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentEntry"
+
+  /content/{id}:
+    get:
+      operationId: getContent
+      tags: [content]
+      summary: Get a single content entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Content found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+    patch:
+      operationId: updateContent
+      tags: [content]
+      summary: Update content fields (edit before approval)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContentBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+
+  /content/{id}/approve:
+    post:
+      operationId: approveContent
+      tags: [content]
+      summary: Approve content and push to Supabase
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved and pushed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+
+  /content/{id}/reject:
+    post:
+      operationId: rejectContent
+      tags: [content]
+      summary: Reject content (mark for regeneration)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectContentBody"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+
+  /content/generate:
+    post:
+      operationId: generateContent
+      tags: [content]
+      summary: Trigger AI content generation for today's business
+      responses:
+        "200":
+          description: Generation started or completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [content]
+      summary: Dashboard summary stats
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the user
+      parameters:
+        - in: query
+          name: unread
+          schema:
+            type: boolean
+          required: false
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [schedule]
+      summary: Get app settings (email, Supabase config, schedule time)
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+    put:
+      operationId: updateSettings
+      tags: [schedule]
+      summary: Update app settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppSettings"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +337,262 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Business:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        website:
+          type: string
+          nullable: true
+        province:
+          type: string
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, published, skipped]
+        addedAt:
+          type: string
+          format: date-time
+      required: [id, name, status, addedAt]
+
+    CreateBusinessBody:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+          nullable: true
+        province:
+          type: string
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required: [name]
+
+    UpdateBusinessBody:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+          nullable: true
+        province:
+          type: string
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, published, skipped]
+
+    ContentEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        businessId:
+          type: integer
+        businessName:
+          type: string
+        founderName:
+          type: string
+          nullable: true
+        founderBio:
+          type: string
+          nullable: true
+        standoutProduct:
+          type: string
+          nullable: true
+        productDescription:
+          type: string
+          nullable: true
+        businessDescription:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        madeInSA:
+          type: string
+          nullable: true
+        callToAction:
+          type: string
+          nullable: true
+        websiteUrl:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, pending_review, approved, published, rejected]
+        rejectionNote:
+          type: string
+          nullable: true
+        generatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        approvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduledDate:
+          type: string
+          format: date
+          nullable: true
+      required: [id, businessId, businessName, status]
+
+    UpdateContentBody:
+      type: object
+      properties:
+        founderName:
+          type: string
+          nullable: true
+        founderBio:
+          type: string
+          nullable: true
+        standoutProduct:
+          type: string
+          nullable: true
+        productDescription:
+          type: string
+          nullable: true
+        businessDescription:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        madeInSA:
+          type: string
+          nullable: true
+        callToAction:
+          type: string
+          nullable: true
+
+    RejectContentBody:
+      type: object
+      properties:
+        note:
+          type: string
+          nullable: true
+
+    DashboardStats:
+      type: object
+      properties:
+        totalBusinesses:
+          type: integer
+        pendingReview:
+          type: integer
+        publishedThisMonth:
+          type: integer
+        totalPublished:
+          type: integer
+        nextScheduledDate:
+          type: string
+          nullable: true
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+      required: [totalBusinesses, pendingReview, publishedThisMonth, totalPublished, recentActivity]
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, type, description, createdAt]
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+          enum: [content_ready, published, rejected, system]
+        read:
+          type: boolean
+        contentId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, title, message, type, read, createdAt]
+
+    AppSettings:
+      type: object
+      properties:
+        notificationEmail:
+          type: string
+          nullable: true
+        supabaseUrl:
+          type: string
+          nullable: true
+        supabaseTableName:
+          type: string
+          nullable: true
+        dailyScheduleTime:
+          type: string
+          nullable: true
+        emailNotificationsEnabled:
+          type: boolean
+      required: [emailNotificationsEnabled]
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        notificationEmail:
+          type: string
+          nullable: true
+        supabaseUrl:
+          type: string
+          nullable: true
+        supabaseAnonKey:
+          type: string
+          nullable: true
+        supabaseTableName:
+          type: string
+          nullable: true
+        dailyScheduleTime:
+          type: string
+          nullable: true
+        emailNotificationsEnabled:
+          type: boolean
