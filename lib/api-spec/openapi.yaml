@@ -559,6 +559,12 @@ components:
         updatedFields:
           type: object
           additionalProperties: true
+        sourcesUsed:
+          type: array
+          items:
+            type: string
+        webSearched:
+          type: boolean
       required: [reply, updatedFields]
 
     RejectContentBody:

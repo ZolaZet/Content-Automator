@@ -111,6 +111,8 @@ export type ContentChatResponseUpdatedFields = { [key: string]: unknown };
 export interface ContentChatResponse {
   reply: string;
   updatedFields: ContentChatResponseUpdatedFields;
+  sourcesUsed?: string[];
+  webSearched?: boolean;
 }
 
 export interface RejectContentBody {

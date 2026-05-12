@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowLeft, CheckCircle2, XCircle, Save, ExternalLink,
-  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw,
+  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,14 +55,28 @@ interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   updatedFields?: string[];
+  sourcesUsed?: string[];
+  webSearched?: boolean;
+}
+
+const SEARCH_KEYWORDS = [
+  "find", "search", "look up", "lookup", "fetch", "get", "check",
+  "what is", "who is", "where is", "what are", "tell me about",
+  "website", "url", "address", "latest", "current", "real", "actual",
+  "correct", "verify", "confirm", "research", "information about",
+];
+
+function detectSearchIntent(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  return SEARCH_KEYWORDS.some(k => lower.includes(k));
 }
 
 const QUICK_PROMPTS = [
+  "Find the correct website URL for this business",
+  "Search for the founder's background and update their bio",
   "Make the founder bio more personal and engaging",
   "Shorten the call to action to under 8 words",
-  "Find the correct website URL for this business",
   "Rewrite the business description with more SA pride",
-  "Suggest a more compelling standout product name",
 ];
 
 function ContentField({ label, value }: { label: string; value: string | null | undefined }) {
@@ -85,6 +99,7 @@ export default function ContentDetail() {
   const [chatOpen, setChatOpen] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
+  const [pendingIsSearch, setPendingIsSearch] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -170,9 +185,11 @@ export default function ContentDetail() {
     const text = (messageText ?? chatInput).trim();
     if (!text || chatWithContent.isPending) return;
 
+    const isSearch = detectSearchIntent(text);
     const currentValues = form.getValues();
     setChatMessages(prev => [...prev, { role: "user", text }]);
     setChatInput("");
+    setPendingIsSearch(isSearch);
 
     chatWithContent.mutate(
       {
@@ -181,6 +198,7 @@ export default function ContentDetail() {
       },
       {
         onSuccess: (result) => {
+          setPendingIsSearch(false);
           const updated = result.updatedFields as Record<string, string | null>;
           const changedKeys = Object.keys(updated);
 
@@ -196,10 +214,13 @@ export default function ContentDetail() {
               role: "assistant",
               text: result.reply,
               updatedFields: changedKeys.length > 0 ? changedKeys : undefined,
+              sourcesUsed: result.sourcesUsed ?? undefined,
+              webSearched: result.webSearched ?? false,
             },
           ]);
         },
         onError: () => {
+          setPendingIsSearch(false);
           setChatMessages(prev => [
             ...prev,
             { role: "assistant", text: "Something went wrong. Please try again." },
@@ -483,6 +504,22 @@ export default function ContentDetail() {
                             ))}
                           </div>
                         )}
+                        {msg.sourcesUsed && msg.sourcesUsed.length > 0 && (
+                          <div className="flex flex-col gap-0.5 px-1 pt-0.5">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Globe className="w-2.5 h-2.5" /> Sources used
+                            </span>
+                            {msg.sourcesUsed.map(src => {
+                              const label = (() => { try { return new URL(src).hostname; } catch { return src.slice(0, 40); } })();
+                              return (
+                                <a key={src} href={src} target="_blank" rel="noopener noreferrer"
+                                  className="text-[10px] text-primary underline underline-offset-2 truncate hover:text-primary/80">
+                                  {label}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -491,11 +528,18 @@ export default function ContentDetail() {
                       <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                         <Bot className="w-3 h-3 text-primary" />
                       </div>
-                      <div className="bg-muted rounded-lg px-3 py-2 flex gap-1 items-center">
-                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                      </div>
+                      {pendingIsSearch ? (
+                        <div className="bg-muted rounded-lg px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Globe className="w-3 h-3 animate-pulse text-primary" />
+                          Searching the web…
+                        </div>
+                      ) : (
+                        <div className="bg-muted rounded-lg px-3 py-2 flex gap-1 items-center">
+                          <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                          <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                          <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        </div>
+                      )}
                     </div>
                   )}
                   <div ref={chatEndRef} />

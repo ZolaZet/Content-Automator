@@ -262,6 +262,8 @@ export const ChatWithContentBody = zod.object({
 export const ChatWithContentResponse = zod.object({
   reply: zod.string(),
   updatedFields: zod.record(zod.string(), zod.unknown()),
+  sourcesUsed: zod.array(zod.string()).optional(),
+  webSearched: zod.boolean().optional(),
 });
 
 /**
