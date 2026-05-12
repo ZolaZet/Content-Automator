@@ -14,7 +14,7 @@ import { z } from "zod";
 import {
   Save, Zap, Database, Mail, Clock,
   CheckCircle2, XCircle, AlertCircle, Loader2,
-  ExternalLink, Eye, EyeOff, ChevronDown, ChevronUp,
+  ExternalLink, Eye, EyeOff, ChevronDown, ChevronUp, Copy, Check,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,85 @@ function ConnectionBadge({ status, error }: { status: ConnectionStatus; error?: 
     <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/40 bg-destructive/5">
       <XCircle className="w-3 h-3" /> {error ?? "Connection failed"}
     </Badge>
+  );
+}
+
+const SUPABASE_SQL = `-- Run this in your Supabase project: SQL Editor → New query
+create table if not exists featured_businesses (
+  id            bigint primary key generated always as identity,
+  created_at    timestamptz default now(),
+
+  -- Business identity
+  business_name       text not null,
+  website_url         text,
+  location            text,
+  made_in_sa          text,
+
+  -- Founder
+  founder_name        text,
+  founder_bio         text,
+
+  -- Product
+  standout_product    text,
+  product_description text,
+
+  -- Page content
+  business_description text,
+  call_to_action       text,
+
+  -- Scheduling
+  scheduled_date  text,
+  published_at    timestamptz
+);
+
+-- Allow the hub to insert rows using your anon key
+alter table featured_businesses enable row level security;
+
+create policy "Allow anon insert"
+  on featured_businesses for insert
+  to anon
+  with check (true);
+
+create policy "Allow anon select"
+  on featured_businesses for select
+  to anon
+  using (true);`;
+
+function SqlSchema() {
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(SUPABASE_SQL).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 text-sm">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors rounded-lg"
+      >
+        <span className="text-xs font-medium text-muted-foreground">View SQL schema to create your table</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="border-t border-border">
+          <div className="flex items-center justify-between px-4 py-2">
+            <span className="text-xs text-muted-foreground">Paste this into <strong>Supabase → SQL Editor → New query</strong></span>
+            <Button type="button" variant="outline" size="sm" onClick={handleCopy} className="gap-1.5 h-7 text-xs">
+              {copied ? <><Check className="w-3 h-3 text-secondary" /> Copied!</> : <><Copy className="w-3 h-3" /> Copy SQL</>}
+            </Button>
+          </div>
+          <pre className="px-4 pb-4 text-[11px] leading-relaxed text-foreground font-mono overflow-x-auto whitespace-pre bg-muted/50 rounded-b-lg">
+            {SUPABASE_SQL}
+          </pre>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -309,6 +388,7 @@ export default function Settings() {
                 )} />
               </div>
 
+              <SqlSchema />
               <HowToFind open={howToOpen} onToggle={() => setHowToOpen(o => !o)} />
             </CardContent>
           </Card>
