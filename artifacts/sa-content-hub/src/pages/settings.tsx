@@ -1,6 +1,8 @@
+import { useState } from "react";
 import {
   useGetSettings,
   useUpdateSettings,
+  useTestSupabaseConnection,
   getGetSettingsQueryKey,
   useGenerateContent,
   getGetDashboardStatsQueryKey,
@@ -9,11 +11,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Save, Zap, Database, Mail, Clock } from "lucide-react";
+import {
+  Save, Zap, Database, Mail, Clock,
+  CheckCircle2, XCircle, AlertCircle, Loader2,
+  ExternalLink, Eye, EyeOff, ChevronDown, ChevronUp,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -29,12 +36,79 @@ const settingsSchema = z.object({
 
 type SettingsValues = z.infer<typeof settingsSchema>;
 
+type ConnectionStatus = "idle" | "testing" | "connected" | "error";
+
+function ConnectionBadge({ status, error }: { status: ConnectionStatus; error?: string | null }) {
+  if (status === "idle") return null;
+  if (status === "testing") {
+    return (
+      <Badge variant="outline" className="gap-1.5 text-muted-foreground border-muted-foreground/30">
+        <Loader2 className="w-3 h-3 animate-spin" /> Testing…
+      </Badge>
+    );
+  }
+  if (status === "connected") {
+    return (
+      <Badge variant="outline" className="gap-1.5 text-secondary border-secondary/40 bg-secondary/10">
+        <CheckCircle2 className="w-3 h-3" /> Connected
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="gap-1.5 text-destructive border-destructive/40 bg-destructive/5">
+      <XCircle className="w-3 h-3" /> {error ?? "Connection failed"}
+    </Badge>
+  );
+}
+
+function HowToFind({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 text-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/50 transition-colors rounded-lg"
+      >
+        <span className="text-xs font-medium text-muted-foreground">Where do I find these?</span>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-3 text-xs text-muted-foreground leading-relaxed border-t border-border pt-3">
+          <div>
+            <p className="font-semibold text-foreground mb-1">1. Open your Supabase project</p>
+            <p>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary underline inline-flex items-center gap-0.5">supabase.com/dashboard <ExternalLink className="w-2.5 h-2.5" /></a> and select your project.</p>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground mb-1">2. Find your Project URL</p>
+            <p>Go to <span className="font-mono bg-muted px-1 rounded">Settings → API</span> and copy the <strong>Project URL</strong> (looks like <span className="font-mono bg-muted px-1 rounded">https://abcxyz.supabase.co</span>).</p>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground mb-1">3. Copy your Anon Key</p>
+            <p>On the same page, copy the <strong>anon public</strong> key under <span className="font-mono bg-muted px-1 rounded">Project API keys</span>. It starts with <span className="font-mono bg-muted px-1 rounded">eyJ…</span></p>
+          </div>
+          <div>
+            <p className="font-semibold text-foreground mb-1">4. Table name (add later)</p>
+            <p>You can leave this blank for now and fill it in once you've created your Lovable project and set up your content table.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Settings() {
   const { data: settings, isLoading } = useGetSettings();
   const updateSettings = useUpdateSettings();
+  const testConnection = useTestSupabaseConnection();
   const generateContent = useGenerateContent();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const [connStatus, setConnStatus] = useState<ConnectionStatus>("idle");
+  const [connError, setConnError] = useState<string | null>(null);
+  const [connProjectRef, setConnProjectRef] = useState<string | null>(null);
+  const [showKey, setShowKey] = useState(false);
+  const [howToOpen, setHowToOpen] = useState(false);
 
   const form = useForm<SettingsValues>({
     resolver: zodResolver(settingsSchema),
@@ -67,6 +141,37 @@ export default function Settings() {
     });
   };
 
+  const handleTestConnection = () => {
+    const url = form.getValues("supabaseUrl");
+    const key = form.getValues("supabaseAnonKey");
+    if (!url || !key) {
+      toast({ title: "Enter your Project URL and Anon Key first", variant: "destructive" });
+      return;
+    }
+    setConnStatus("testing");
+    setConnError(null);
+    setConnProjectRef(null);
+    testConnection.mutate(
+      { data: { supabaseUrl: url, supabaseAnonKey: key } },
+      {
+        onSuccess: (result) => {
+          if (result.connected) {
+            setConnStatus("connected");
+            setConnProjectRef(result.projectRef ?? null);
+            toast({ title: "Supabase connected!", description: result.projectRef ? `Project: ${result.projectRef}` : undefined });
+          } else {
+            setConnStatus("error");
+            setConnError(result.error ?? "Connection failed");
+          }
+        },
+        onError: () => {
+          setConnStatus("error");
+          setConnError("Could not reach Supabase");
+        },
+      }
+    );
+  };
+
   const handleManualGenerate = () => {
     generateContent.mutate(undefined, {
       onSuccess: () => {
@@ -81,8 +186,10 @@ export default function Settings() {
   };
 
   if (isLoading) {
-    return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-32 w-full" />)}</div>;
+    return <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full" />)}</div>;
   }
+
+  const alreadyConfigured = settings?.supabaseConfigured ?? false;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -93,6 +200,120 @@ export default function Settings() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSave)} className="space-y-5">
+
+          {/* ── Supabase Connection ── */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-base">Supabase Connection</CardTitle>
+                </div>
+                <div className="flex items-center gap-2">
+                  {alreadyConfigured && connStatus === "idle" && (
+                    <Badge variant="outline" className="gap-1.5 text-secondary border-secondary/40 bg-secondary/10">
+                      <CheckCircle2 className="w-3 h-3" /> Configured
+                    </Badge>
+                  )}
+                  {(!alreadyConfigured && connStatus === "idle") && (
+                    <Badge variant="outline" className="gap-1.5 text-muted-foreground border-muted-foreground/30">
+                      <AlertCircle className="w-3 h-3" /> Not connected
+                    </Badge>
+                  )}
+                  <ConnectionBadge status={connStatus} error={connError} />
+                </div>
+              </div>
+              <CardDescription>
+                Connect to your Supabase project so approved content can be published automatically
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+
+              {connStatus === "connected" && connProjectRef && (
+                <div className="flex items-center gap-2 rounded-lg border border-secondary/30 bg-secondary/8 px-3 py-2.5 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-secondary flex-shrink-0" />
+                  <span className="text-secondary font-medium">Connected to <span className="font-mono">{connProjectRef}</span></span>
+                </div>
+              )}
+
+              <FormField control={form.control} name="supabaseUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project URL</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://xxxxxxxxxxxx.supabase.co"
+                      {...field}
+                      onChange={(e) => { field.onChange(e); setConnStatus("idle"); }}
+                      data-testid="input-supabase-url"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="supabaseAnonKey" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Anon Key</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Input
+                        type={showKey ? "text" : "password"}
+                        placeholder="eyJhbGci…"
+                        {...field}
+                        onChange={(e) => { field.onChange(e); setConnStatus("idle"); }}
+                        className="pr-10"
+                        data-testid="input-supabase-anon-key"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKey(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </FormControl>
+                  <FormDescription>Your public anon key — safe to use in the browser</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleTestConnection}
+                disabled={connStatus === "testing"}
+                className="gap-2 w-full"
+                data-testid="button-test-supabase"
+              >
+                {connStatus === "testing"
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Testing connection…</>
+                  : <><Database className="w-4 h-4" /> Test Connection</>}
+              </Button>
+
+              <div className="border-t border-border pt-4">
+                <FormField control={form.control} name="supabaseTableName" render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Table Name</FormLabel>
+                      <span className="text-[10px] font-medium text-muted-foreground border border-muted-foreground/30 rounded px-1.5 py-0.5">optional</span>
+                    </div>
+                    <FormControl>
+                      <Input placeholder="e.g. featured_businesses" {...field} data-testid="input-supabase-table" />
+                    </FormControl>
+                    <FormDescription>
+                      The table that holds your page content. You can add this later once your Lovable project is ready.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              <HowToFind open={howToOpen} onToggle={() => setHowToOpen(o => !o)} />
+            </CardContent>
+          </Card>
+
+          {/* ── Notifications ── */}
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -124,42 +345,7 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Database className="w-4 h-4 text-primary" />
-                <CardTitle className="text-base">Supabase Connection</CardTitle>
-              </div>
-              <CardDescription>Connect your Lovable site's Supabase database to auto-publish content</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField control={form.control} name="supabaseUrl" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Supabase Project URL</FormLabel>
-                  <FormControl><Input placeholder="https://xxxx.supabase.co" {...field} data-testid="input-supabase-url" /></FormControl>
-                  <FormDescription>Found in your Supabase project settings under API</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="supabaseAnonKey" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Supabase Anon Key</FormLabel>
-                  <FormControl><Input type="password" placeholder="eyJhbGci..." {...field} data-testid="input-supabase-anon-key" /></FormControl>
-                  <FormDescription>Your public anon key from Supabase API settings</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="supabaseTableName" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Supabase Table Name</FormLabel>
-                  <FormControl><Input placeholder="e.g. featured_businesses" {...field} data-testid="input-supabase-table" /></FormControl>
-                  <FormDescription>The table in your Lovable site's database that holds page content</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </CardContent>
-          </Card>
-
+          {/* ── Schedule ── */}
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -187,6 +373,7 @@ export default function Settings() {
         </form>
       </Form>
 
+      {/* ── Manual Trigger ── */}
       <Card className="shadow-sm border-dashed border-muted-foreground/30">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">

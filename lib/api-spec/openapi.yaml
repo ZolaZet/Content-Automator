@@ -374,6 +374,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/AppSettings"
 
+  /settings/test-supabase:
+    post:
+      operationId: testSupabaseConnection
+      tags: [schedule]
+      summary: Test a Supabase connection with the provided credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestSupabaseBody"
+      responses:
+        "200":
+          description: Connection test result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestSupabaseResult"
+
 components:
   schemas:
     HealthStatus:
@@ -647,7 +666,9 @@ components:
           nullable: true
         emailNotificationsEnabled:
           type: boolean
-      required: [emailNotificationsEnabled]
+        supabaseConfigured:
+          type: boolean
+      required: [emailNotificationsEnabled, supabaseConfigured]
 
     UpdateSettingsBody:
       type: object
@@ -669,3 +690,25 @@ components:
           nullable: true
         emailNotificationsEnabled:
           type: boolean
+
+    TestSupabaseBody:
+      type: object
+      properties:
+        supabaseUrl:
+          type: string
+        supabaseAnonKey:
+          type: string
+      required: [supabaseUrl, supabaseAnonKey]
+
+    TestSupabaseResult:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        projectRef:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true
+      required: [connected]

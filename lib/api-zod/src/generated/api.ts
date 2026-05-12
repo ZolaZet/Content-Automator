@@ -433,6 +433,7 @@ export const GetSettingsResponse = zod.object({
   supabaseTableName: zod.string().nullish(),
   dailyScheduleTime: zod.string().nullish(),
   emailNotificationsEnabled: zod.boolean(),
+  supabaseConfigured: zod.boolean(),
 });
 
 /**
@@ -453,4 +454,19 @@ export const UpdateSettingsResponse = zod.object({
   supabaseTableName: zod.string().nullish(),
   dailyScheduleTime: zod.string().nullish(),
   emailNotificationsEnabled: zod.boolean(),
+  supabaseConfigured: zod.boolean(),
+});
+
+/**
+ * @summary Test a Supabase connection with the provided credentials
+ */
+export const TestSupabaseConnectionBody = zod.object({
+  supabaseUrl: zod.string(),
+  supabaseAnonKey: zod.string(),
+});
+
+export const TestSupabaseConnectionResponse = zod.object({
+  connected: zod.boolean(),
+  projectRef: zod.string().nullish(),
+  error: zod.string().nullish(),
 });

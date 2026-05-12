@@ -30,6 +30,8 @@ import type {
   ListNotificationsParams,
   Notification,
   RejectContentBody,
+  TestSupabaseBody,
+  TestSupabaseResult,
   UpdateBusinessBody,
   UpdateContentBody,
   UpdateSettingsBody,
@@ -1663,4 +1665,90 @@ export const useUpdateSettings = <
   TContext
 > => {
   return useMutation(getUpdateSettingsMutationOptions(options));
+};
+
+/**
+ * @summary Test a Supabase connection with the provided credentials
+ */
+export const getTestSupabaseConnectionUrl = () => {
+  return `/api/settings/test-supabase`;
+};
+
+export const testSupabaseConnection = async (
+  testSupabaseBody: TestSupabaseBody,
+  options?: RequestInit,
+): Promise<TestSupabaseResult> => {
+  return customFetch<TestSupabaseResult>(getTestSupabaseConnectionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(testSupabaseBody),
+  });
+};
+
+export const getTestSupabaseConnectionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testSupabaseConnection>>,
+    TError,
+    { data: BodyType<TestSupabaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testSupabaseConnection>>,
+  TError,
+  { data: BodyType<TestSupabaseBody> },
+  TContext
+> => {
+  const mutationKey = ["testSupabaseConnection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testSupabaseConnection>>,
+    { data: BodyType<TestSupabaseBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return testSupabaseConnection(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestSupabaseConnectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testSupabaseConnection>>
+>;
+export type TestSupabaseConnectionMutationBody = BodyType<TestSupabaseBody>;
+export type TestSupabaseConnectionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Test a Supabase connection with the provided credentials
+ */
+export const useTestSupabaseConnection = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testSupabaseConnection>>,
+    TError,
+    { data: BodyType<TestSupabaseBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testSupabaseConnection>>,
+  TError,
+  { data: BodyType<TestSupabaseBody> },
+  TContext
+> => {
+  return useMutation(getTestSupabaseConnectionMutationOptions(options));
 };

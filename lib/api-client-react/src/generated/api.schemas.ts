@@ -161,6 +161,7 @@ export interface AppSettings {
   supabaseTableName?: string | null;
   dailyScheduleTime?: string | null;
   emailNotificationsEnabled: boolean;
+  supabaseConfigured: boolean;
 }
 
 export interface UpdateSettingsBody {
@@ -170,6 +171,17 @@ export interface UpdateSettingsBody {
   supabaseTableName?: string | null;
   dailyScheduleTime?: string | null;
   emailNotificationsEnabled?: boolean;
+}
+
+export interface TestSupabaseBody {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+}
+
+export interface TestSupabaseResult {
+  connected: boolean;
+  projectRef?: string | null;
+  error?: string | null;
 }
 
 export type ListBusinessesParams = {

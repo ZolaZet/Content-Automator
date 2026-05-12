@@ -2,7 +2,8 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { UpdateSettingsBody } from "@workspace/api-zod";
+import { UpdateSettingsBody, TestSupabaseConnectionBody } from "@workspace/api-zod";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -18,15 +19,20 @@ async function ensureSettings() {
   return rows[0];
 }
 
-router.get("/settings", async (_req, res) => {
-  const settings = await ensureSettings();
-  res.json({
+function buildSettingsResponse(settings: Awaited<ReturnType<typeof ensureSettings>>) {
+  return {
     notificationEmail: settings.notificationEmail ?? null,
     supabaseUrl: settings.supabaseUrl ?? null,
     supabaseTableName: settings.supabaseTableName ?? null,
     dailyScheduleTime: settings.dailyScheduleTime ?? null,
     emailNotificationsEnabled: settings.emailNotificationsEnabled,
-  });
+    supabaseConfigured: !!(settings.supabaseUrl && settings.supabaseAnonKey),
+  };
+}
+
+router.get("/settings", async (_req, res) => {
+  const settings = await ensureSettings();
+  res.json(buildSettingsResponse(settings));
 });
 
 router.put("/settings", async (req, res) => {
@@ -53,13 +59,58 @@ router.put("/settings", async (req, res) => {
     .where(eq(settingsTable.id, current.id))
     .returning();
 
-  res.json({
-    notificationEmail: updated.notificationEmail ?? null,
-    supabaseUrl: updated.supabaseUrl ?? null,
-    supabaseTableName: updated.supabaseTableName ?? null,
-    dailyScheduleTime: updated.dailyScheduleTime ?? null,
-    emailNotificationsEnabled: updated.emailNotificationsEnabled,
-  });
+  res.json(buildSettingsResponse(updated));
+});
+
+// Test a Supabase connection before saving
+router.post("/settings/test-supabase", async (req, res) => {
+  const parsed = TestSupabaseConnectionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ connected: false, error: "Invalid request body" });
+    return;
+  }
+
+  const { supabaseUrl, supabaseAnonKey } = parsed.data;
+
+  try {
+    // Normalize URL – strip trailing slashes
+    const base = supabaseUrl.replace(/\/+$/, "");
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    const testRes = await fetch(`${base}/rest/v1/`, {
+      signal: controller.signal,
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+    });
+    clearTimeout(timer);
+
+    // Supabase returns 200 (or 400 for missing table, but still reachable) when credentials are valid
+    // 401 means invalid key; anything else means connectivity issue
+    if (testRes.status === 401) {
+      res.json({ connected: false, error: "Invalid API key — check your Supabase Anon Key" });
+      return;
+    }
+
+    // Extract the project ref from the URL (https://<ref>.supabase.co)
+    let projectRef: string | null = null;
+    try {
+      const hostname = new URL(base).hostname; // e.g. xyzabc.supabase.co
+      projectRef = hostname.split(".")[0] ?? null;
+    } catch {
+      // ignore parse errors
+    }
+
+    logger.info({ projectRef, status: testRes.status }, "Supabase connection test succeeded");
+    res.json({ connected: true, projectRef });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Connection failed";
+    logger.warn({ err }, "Supabase connection test failed");
+    res.json({ connected: false, error: msg.includes("abort") ? "Connection timed out" : msg });
+  }
 });
 
 export default router;
