@@ -76,10 +76,21 @@ router.post("/settings/test-supabase", async (req, res) => {
     // Normalize URL – strip trailing slashes
     const base = supabaseUrl.replace(/\/+$/, "");
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    // Extract the project ref from the URL (https://<ref>.supabase.co)
+    let projectRef: string | null = null;
+    try {
+      const hostname = new URL(base).hostname; // e.g. xyzabc.supabase.co
+      projectRef = hostname.split(".")[0] ?? null;
+    } catch {
+      res.json({ connected: false, error: "Invalid Project URL — it should look like https://abcxyz.supabase.co" });
+      return;
+    }
 
-    const testRes = await fetch(`${base}/rest/v1/`, {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+
+    // Use /auth/v1/settings — always accessible with the anon (publishable) key on any Supabase project
+    const testRes = await fetch(`${base}/auth/v1/settings`, {
       signal: controller.signal,
       headers: {
         apikey: supabaseAnonKey,
@@ -88,28 +99,42 @@ router.post("/settings/test-supabase", async (req, res) => {
     });
     clearTimeout(timer);
 
-    // Supabase returns 200 (or 400 for missing table, but still reachable) when credentials are valid
-    // 401 means invalid key; anything else means connectivity issue
-    if (testRes.status === 401) {
-      res.json({ connected: false, error: "Invalid API key — check your Supabase Anon Key" });
+    logger.info({ projectRef, status: testRes.status }, "Supabase connection test result");
+
+    if (testRes.status === 401 || testRes.status === 403) {
+      // Try to get more detail from the response body
+      let detail = "";
+      try {
+        const body = await testRes.json() as { message?: string };
+        detail = body.message ? `: ${body.message}` : "";
+      } catch { /* ignore */ }
+      res.json({
+        connected: false,
+        error: `Invalid API key${detail}. Use the 'anon' / 'publishable' key from Supabase → Settings → API, not the service_role secret.`,
+      });
       return;
     }
 
-    // Extract the project ref from the URL (https://<ref>.supabase.co)
-    let projectRef: string | null = null;
-    try {
-      const hostname = new URL(base).hostname; // e.g. xyzabc.supabase.co
-      projectRef = hostname.split(".")[0] ?? null;
-    } catch {
-      // ignore parse errors
+    if (testRes.status === 404) {
+      res.json({ connected: false, error: "Project not found — check your Project URL" });
+      return;
     }
 
-    logger.info({ projectRef, status: testRes.status }, "Supabase connection test succeeded");
+    if (!testRes.ok && testRes.status !== 400) {
+      res.json({ connected: false, error: `Unexpected response from Supabase (HTTP ${testRes.status})` });
+      return;
+    }
+
     res.json({ connected: true, projectRef });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Connection failed";
     logger.warn({ err }, "Supabase connection test failed");
-    res.json({ connected: false, error: msg.includes("abort") ? "Connection timed out" : msg });
+    const friendly = msg.toLowerCase().includes("abort")
+      ? "Connection timed out — check your Project URL"
+      : msg.toLowerCase().includes("fetch")
+      ? "Could not reach Supabase — check your Project URL"
+      : msg;
+    res.json({ connected: false, error: friendly });
   }
 });
 
