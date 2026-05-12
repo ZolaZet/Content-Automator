@@ -19,6 +19,8 @@ import type {
 import type {
   AppSettings,
   Business,
+  ContentChatBody,
+  ContentChatResponse,
   ContentEntry,
   CreateBusinessBody,
   DashboardStats,
@@ -821,6 +823,93 @@ export const useUpdateContent = <
   TContext
 > => {
   return useMutation(getUpdateContentMutationOptions(options));
+};
+
+/**
+ * @summary Use AI to refine or research content fields
+ */
+export const getChatWithContentUrl = (id: number) => {
+  return `/api/content/${id}/chat`;
+};
+
+export const chatWithContent = async (
+  id: number,
+  contentChatBody: ContentChatBody,
+  options?: RequestInit,
+): Promise<ContentChatResponse> => {
+  return customFetch<ContentChatResponse>(getChatWithContentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(contentChatBody),
+  });
+};
+
+export const getChatWithContentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof chatWithContent>>,
+    TError,
+    { id: number; data: BodyType<ContentChatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof chatWithContent>>,
+  TError,
+  { id: number; data: BodyType<ContentChatBody> },
+  TContext
+> => {
+  const mutationKey = ["chatWithContent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof chatWithContent>>,
+    { id: number; data: BodyType<ContentChatBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return chatWithContent(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChatWithContentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof chatWithContent>>
+>;
+export type ChatWithContentMutationBody = BodyType<ContentChatBody>;
+export type ChatWithContentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Use AI to refine or research content fields
+ */
+export const useChatWithContent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof chatWithContent>>,
+    TError,
+    { id: number; data: BodyType<ContentChatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof chatWithContent>>,
+  TError,
+  { id: number; data: BodyType<ContentChatBody> },
+  TContext
+> => {
+  return useMutation(getChatWithContentMutationOptions(options));
 };
 
 /**

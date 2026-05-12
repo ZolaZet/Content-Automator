@@ -20,6 +20,7 @@ import {
 import { generateContentForBusiness, pickNextBusiness } from "../lib/ai-generator";
 import { logger } from "../lib/logger";
 import { pushToSupabase } from "../lib/supabase-push";
+import { chatWithContent } from "../lib/content-chat";
 
 const router = Router();
 
@@ -211,6 +212,17 @@ router.post("/content/:id/reject", async (req, res) => {
   });
 
   res.json(serializeContent(updated, biz?.name ?? "Unknown"));
+});
+
+router.post("/content/:id/chat", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { message, currentContent } = req.body as { message: string; currentContent?: Record<string, unknown> };
+  if (!message) { res.status(400).json({ error: "message is required" }); return; }
+
+  const result = await chatWithContent(id, message, currentContent ?? {});
+  res.json(result);
 });
 
 router.post("/content/generate", async (req, res) => {

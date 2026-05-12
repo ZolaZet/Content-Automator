@@ -183,6 +183,7 @@ export const UpdateContentBody = zod.object({
   location: zod.string().nullish(),
   madeInSA: zod.string().nullish(),
   callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
 });
 
 export const UpdateContentResponse = zod.object({
@@ -210,6 +211,23 @@ export const UpdateContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Use AI to refine or research content fields
+ */
+export const ChatWithContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ChatWithContentBody = zod.object({
+  message: zod.string(),
+  currentContent: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+export const ChatWithContentResponse = zod.object({
+  reply: zod.string(),
+  updatedFields: zod.record(zod.string(), zod.unknown()),
 });
 
 /**

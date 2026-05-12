@@ -190,6 +190,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/ContentEntry"
 
+  /content/{id}/chat:
+    post:
+      operationId: chatWithContent
+      tags: [content]
+      summary: Use AI to refine or research content fields
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentChatBody"
+      responses:
+        "200":
+          description: AI reply and any updated fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentChatResponse"
+
   /content/{id}/approve:
     post:
       operationId: approveContent
@@ -493,6 +518,29 @@ components:
         callToAction:
           type: string
           nullable: true
+        websiteUrl:
+          type: string
+          nullable: true
+
+    ContentChatBody:
+      type: object
+      properties:
+        message:
+          type: string
+        currentContent:
+          type: object
+          additionalProperties: true
+      required: [message]
+
+    ContentChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        updatedFields:
+          type: object
+          additionalProperties: true
+      required: [reply, updatedFields]
 
     RejectContentBody:
       type: object

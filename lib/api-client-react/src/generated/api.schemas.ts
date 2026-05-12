@@ -96,6 +96,21 @@ export interface UpdateContentBody {
   location?: string | null;
   madeInSA?: string | null;
   callToAction?: string | null;
+  websiteUrl?: string | null;
+}
+
+export type ContentChatBodyCurrentContent = { [key: string]: unknown };
+
+export interface ContentChatBody {
+  message: string;
+  currentContent?: ContentChatBodyCurrentContent;
+}
+
+export type ContentChatResponseUpdatedFields = { [key: string]: unknown };
+
+export interface ContentChatResponse {
+  reply: string;
+  updatedFields: ContentChatResponseUpdatedFields;
 }
 
 export interface RejectContentBody {
