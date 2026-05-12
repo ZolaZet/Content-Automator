@@ -6,6 +6,7 @@ import {
   useUpdateContent,
   useApproveContent,
   useRejectContent,
+  useRegenerateContent,
   useChatWithContent,
   getListContentQueryKey,
   getGetDashboardStatsQueryKey,
@@ -16,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowLeft, CheckCircle2, XCircle, Save, ExternalLink,
-  Bot, Send, User, Sparkles, ChevronDown, ChevronUp,
+  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ export default function ContentDetail() {
   const [, setLocation] = useLocation();
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
+  const [regenOpen, setRegenOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -94,6 +96,7 @@ export default function ContentDetail() {
   const updateContent = useUpdateContent();
   const approveContent = useApproveContent();
   const rejectContent = useRejectContent();
+  const regenerateContent = useRegenerateContent();
   const chatWithContent = useChatWithContent();
 
   const form = useForm<EditValues>({
@@ -136,6 +139,18 @@ export default function ContentDetail() {
         setLocation("/content");
       },
       onError: () => toast({ title: "Approval failed", variant: "destructive" }),
+    });
+  };
+
+  const handleRegenerate = () => {
+    regenerateContent.mutate({ id: numId }, {
+      onSuccess: (fresh) => {
+        invalidate();
+        setRegenOpen(false);
+        setChatMessages([]);
+        toast({ title: "Content regenerated", description: `All fields refreshed for ${fresh.businessName}.` });
+      },
+      onError: () => toast({ title: "Regeneration failed", variant: "destructive" }),
     });
   };
 
@@ -380,7 +395,7 @@ export default function ContentDetail() {
               </CardContent>
             </Card>
 
-            <div className="flex items-center gap-3 pt-1">
+            <div className="flex items-center gap-3 pt-1 flex-wrap">
               {canEdit && (
                 <Button type="submit" variant="outline" disabled={updateContent.isPending} className="gap-1.5" data-testid="button-save-content">
                   <Save className="w-4 h-4" />
@@ -397,6 +412,12 @@ export default function ContentDetail() {
                 <Button type="button" variant="outline" onClick={() => setRejectOpen(true)} className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5" data-testid="button-reject-content">
                   <XCircle className="w-4 h-4" />
                   Reject
+                </Button>
+              )}
+              {canEdit && (
+                <Button type="button" variant="outline" onClick={() => setRegenOpen(true)} disabled={regenerateContent.isPending} className="gap-1.5 ml-auto text-muted-foreground" data-testid="button-regenerate-content">
+                  <RefreshCw className={`w-4 h-4 ${regenerateContent.isPending ? "animate-spin" : ""}`} />
+                  {regenerateContent.isPending ? "Regenerating..." : "Regenerate All"}
                 </Button>
               )}
             </div>
@@ -518,6 +539,29 @@ export default function ContentDetail() {
           )}
         </Card>
       </div>
+
+      {/* Regenerate confirmation dialog */}
+      <Dialog open={regenOpen} onOpenChange={setRegenOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Regenerate all content?</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              This will ask Claude to write completely fresh content for <strong className="text-foreground">{entry.businessName}</strong> — all current fields will be overwritten. Your edits and chat history will be lost.
+            </p>
+            <div className="rounded-lg bg-muted/50 border border-border px-4 py-3 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">What gets replaced</p>
+              <p className="text-xs text-muted-foreground">Founder name &amp; bio · Standout product · Product description · Business description · Location · Made in SA statement · Call to action · Website URL</p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setRegenOpen(false)} disabled={regenerateContent.isPending}>Cancel</Button>
+              <Button onClick={handleRegenerate} disabled={regenerateContent.isPending} className="gap-1.5" data-testid="button-confirm-regenerate">
+                <RefreshCw className={`w-4 h-4 ${regenerateContent.isPending ? "animate-spin" : ""}`} />
+                {regenerateContent.isPending ? "Regenerating…" : "Yes, regenerate"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject dialog */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>

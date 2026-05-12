@@ -826,6 +826,90 @@ export const useUpdateContent = <
 };
 
 /**
+ * @summary Regenerate all AI content fields from scratch for this entry
+ */
+export const getRegenerateContentUrl = (id: number) => {
+  return `/api/content/${id}/regenerate`;
+};
+
+export const regenerateContent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ContentEntry> => {
+  return customFetch<ContentEntry>(getRegenerateContentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRegenerateContentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateContent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof regenerateContent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["regenerateContent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof regenerateContent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return regenerateContent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegenerateContentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof regenerateContent>>
+>;
+
+export type RegenerateContentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Regenerate all AI content fields from scratch for this entry
+ */
+export const useRegenerateContent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateContent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof regenerateContent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRegenerateContentMutationOptions(options));
+};
+
+/**
  * @summary Use AI to refine or research content fields
  */
 export const getChatWithContentUrl = (id: number) => {

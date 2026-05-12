@@ -190,6 +190,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ContentEntry"
 
+  /content/{id}/regenerate:
+    post:
+      operationId: regenerateContent
+      tags: [content]
+      summary: Regenerate all AI content fields from scratch for this entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Freshly generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+
   /content/{id}/chat:
     post:
       operationId: chatWithContent

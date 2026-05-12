@@ -17,7 +17,7 @@ import {
   RejectContentParams,
   RejectContentBody,
 } from "@workspace/api-zod";
-import { generateContentForBusiness, pickNextBusiness } from "../lib/ai-generator";
+import { generateContentForBusiness, pickNextBusiness, regenerateContentEntry } from "../lib/ai-generator";
 import { logger } from "../lib/logger";
 import { pushToSupabase } from "../lib/supabase-push";
 import { chatWithContent } from "../lib/content-chat";
@@ -212,6 +212,20 @@ router.post("/content/:id/reject", async (req, res) => {
   });
 
   res.json(serializeContent(updated, biz?.name ?? "Unknown"));
+});
+
+router.post("/content/:id/regenerate", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  try {
+    const updated = await regenerateContentEntry(id);
+    const [biz] = await db.select().from(businessesTable).where(eq(businessesTable.id, updated.businessId));
+    res.json(serializeContent(updated, biz?.name ?? "Unknown"));
+  } catch (err) {
+    logger.error({ err, id }, "Regeneration failed");
+    res.status(500).json({ error: "Regeneration failed" });
+  }
 });
 
 router.post("/content/:id/chat", async (req, res) => {

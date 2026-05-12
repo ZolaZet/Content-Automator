@@ -97,6 +97,92 @@ Return this exact JSON structure (all fields as strings, use null if unknown):
   return content;
 }
 
+export async function regenerateContentEntry(contentId: number) {
+  const [existing] = await db.select().from(contentTable).where(eq(contentTable.id, contentId));
+  if (!existing) throw new Error(`Content entry ${contentId} not found`);
+
+  const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, existing.businessId));
+  if (!business) throw new Error(`Business ${existing.businessId} not found`);
+
+  const prompt = `You are a content writer for a South African-made products website. Research and write website page content for this South African business. Return ONLY a valid JSON object, no markdown, no explanation.
+
+Business name: ${business.name}
+${business.website ? `Website: ${business.website}` : ""}
+${business.province ? `Province: ${business.province}` : ""}
+${business.industry ? `Industry: ${business.industry}` : ""}
+${business.notes ? `Additional notes: ${business.notes}` : ""}
+
+Return this exact JSON structure (all fields as strings, use null if unknown):
+{
+  "founderName": "Full name of the business founder",
+  "founderBio": "2-3 sentence bio about the founder's story and passion (max 80 words)",
+  "standoutProduct": "Name of their most notable/standout product",
+  "productDescription": "2-3 sentence description of the standout product and what makes it special (max 80 words)",
+  "businessDescription": "2-3 sentence description of the business and its mission (max 80 words)",
+  "location": "City and province where the business operates",
+  "madeInSA": "One compelling sentence about why buying this South African-made product matters",
+  "callToAction": "Short, punchy call to action (max 10 words, e.g. 'Discover their handcrafted collection today')",
+  "websiteUrl": "Website URL if known, otherwise null"
+}`;
+
+  logger.info({ contentId, businessId: business.id, businessName: business.name }, "Regenerating content via AI");
+
+  let parsed: Record<string, string | null>;
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 8192,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = message.content[0]?.type === "text" ? message.content[0].text : "";
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in response");
+    parsed = JSON.parse(jsonMatch[0]) as Record<string, string | null>;
+  } catch (err) {
+    logger.error({ err, contentId }, "AI regeneration failed, using placeholder content");
+    parsed = {
+      founderName: null,
+      founderBio: null,
+      standoutProduct: null,
+      productDescription: null,
+      businessDescription: `${business.name} is a South African business${business.industry ? ` in the ${business.industry} industry` : ""}.`,
+      location: business.province ?? null,
+      madeInSA: "Proudly South African-made — supporting local entrepreneurs and communities.",
+      callToAction: "Discover this proudly South African business today",
+      websiteUrl: business.website ?? null,
+    };
+  }
+
+  const [updated] = await db
+    .update(contentTable)
+    .set({
+      founderName: parsed.founderName ?? null,
+      founderBio: parsed.founderBio ?? null,
+      standoutProduct: parsed.standoutProduct ?? null,
+      productDescription: parsed.productDescription ?? null,
+      businessDescription: parsed.businessDescription ?? null,
+      location: parsed.location ?? null,
+      madeInSA: parsed.madeInSA ?? null,
+      callToAction: parsed.callToAction ?? null,
+      websiteUrl: parsed.websiteUrl ?? null,
+      status: "pending_review",
+      rejectionNote: null,
+      generatedAt: new Date(),
+      approvedAt: null,
+      publishedAt: null,
+    })
+    .where(eq(contentTable.id, contentId))
+    .returning();
+
+  await db.insert(activityTable).values({
+    type: "content_generated",
+    description: `Content regenerated for ${business.name}`,
+  });
+
+  logger.info({ contentId }, "Content regenerated successfully");
+  return updated;
+}
+
 export async function pickNextBusiness(): Promise<number | null> {
   const today = new Date().toISOString().slice(0, 10);
 

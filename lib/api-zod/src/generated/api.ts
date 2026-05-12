@@ -214,6 +214,40 @@ export const UpdateContentResponse = zod.object({
 });
 
 /**
+ * @summary Regenerate all AI content fields from scratch for this entry
+ */
+export const RegenerateContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RegenerateContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
  * @summary Use AI to refine or research content fields
  */
 export const ChatWithContentParams = zod.object({
