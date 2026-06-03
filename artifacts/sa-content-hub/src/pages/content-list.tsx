@@ -1,7 +1,7 @@
 import { useListContent, getListContentQueryKey } from "@workspace/api-client-react";
 import { useSearch, useLocation } from "wouter";
 import { Link } from "wouter";
-import { Clock, CheckCircle2, XCircle, FileText, Send, ChevronRight } from "lucide-react";
+import { Clock, CheckCircle2, XCircle, FileText, Send, ChevronRight, ThumbsUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const STATUS_META: Record<string, { label: string; icon: React.ElementType; className: string }> = {
   pending_review: { label: "Pending Review", icon: Clock, className: "bg-accent/20 text-accent-foreground border-accent/30" },
   draft: { label: "Draft", icon: FileText, className: "bg-muted text-muted-foreground border-border" },
+  approved: { label: "Approved", icon: ThumbsUp, className: "bg-secondary/15 text-secondary border-secondary/30" },
   published: { label: "Published", icon: Send, className: "bg-primary/10 text-primary border-primary/20" },
   rejected: { label: "Rejected", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
@@ -46,6 +47,7 @@ export default function ContentList() {
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="pending_review">Pending Review</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
             <SelectItem value="published">Published</SelectItem>
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
