@@ -10,7 +10,7 @@ router.get("/dashboard/stats", async (_req, res) => {
   const allContent = await db.select().from(contentTable);
   const recentActivity = await db.select().from(activityTable);
 
-  const totalBusinesses = businesses.length;
+  const totalBusinesses = businesses.filter((b) => b.status === "published").length;
   const pendingReview = allContent.filter((c) => c.status === "pending_review").length;
   const totalPublished = allContent.filter((c) => c.status === "approved" || c.status === "published").length;
 
