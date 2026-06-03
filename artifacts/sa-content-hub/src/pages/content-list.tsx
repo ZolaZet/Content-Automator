@@ -9,9 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const STATUS_META: Record<string, { label: string; icon: React.ElementType; className: string }> = {
-  draft: { label: "Draft", icon: FileText, className: "bg-muted text-muted-foreground border-border" },
   pending_review: { label: "Pending Review", icon: Clock, className: "bg-accent/20 text-accent-foreground border-accent/30" },
-  approved: { label: "Approved", icon: CheckCircle2, className: "bg-secondary/15 text-secondary border-secondary/30" },
+  draft: { label: "Draft", icon: FileText, className: "bg-muted text-muted-foreground border-border" },
   published: { label: "Published", icon: Send, className: "bg-primary/10 text-primary border-primary/20" },
   rejected: { label: "Rejected", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
@@ -46,10 +45,9 @@ export default function ContentList() {
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="pending_review">Pending Review</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="published">Published</SelectItem>
             <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
           </SelectContent>
         </Select>
       </div>

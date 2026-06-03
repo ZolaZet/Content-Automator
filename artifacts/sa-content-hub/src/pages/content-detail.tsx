@@ -141,7 +141,7 @@ export default function ContentDetail() {
 
   const handleSave = (values: EditValues) => {
     updateContent.mutate({ id: numId, data: values }, {
-      onSuccess: () => { invalidate(); toast({ title: "Changes saved" }); },
+      onSuccess: () => { invalidate(); toast({ title: "Saved as draft", description: "You can approve or reject it when ready." }); },
       onError: () => toast({ title: "Failed to save", variant: "destructive" }),
     });
   };
@@ -249,7 +249,7 @@ export default function ContentDetail() {
   }
 
   const canEdit = entry.status === "pending_review" || entry.status === "draft";
-  const canApprove = entry.status === "pending_review";
+  const canApprove = entry.status === "pending_review" || entry.status === "draft";
 
   const fieldLabel: Record<string, string> = {
     founderName: "Founder Name",

@@ -10,7 +10,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Pencil, Trash2, Globe, MapPin, Tag, Building2 } from "lucide-react";
+import { Link } from "wouter";
+import { Plus, Pencil, Trash2, Globe, MapPin, Tag, Building2, CheckCircle2, ListTodo } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -145,12 +146,38 @@ export default function Businesses() {
     });
   };
 
+  const publishedBusinesses = businesses?.filter((b) => b.status === "published") ?? [];
+  const pipelineBusinesses = businesses?.filter((b) => b.status !== "published") ?? [];
+
+  const BusinessRow = ({ biz }: { biz: NonNullable<typeof businesses>[number] }) => (
+    <li key={biz.id} className="px-5 py-4 flex items-start gap-4 hover:bg-muted/30 transition-colors" data-testid={`row-business-${biz.id}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-foreground">{biz.name}</span>
+        </div>
+        <div className="flex items-center gap-4 mt-1 flex-wrap">
+          {biz.province && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="w-3 h-3" />{biz.province}</span>}
+          {biz.industry && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Tag className="w-3 h-3" />{biz.industry}</span>}
+          {biz.website && <a href={biz.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Globe className="w-3 h-3" />{biz.website}</a>}
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditBusiness(biz)} data-testid={`button-edit-${biz.id}`}>
+          <Pencil className="w-3.5 h-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(biz.id)} data-testid={`button-delete-${biz.id}`}>
+          <Trash2 className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </li>
+  );
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--app-font-serif)" }}>Business List</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">SA businesses queued for content generation</p>
+          <p className="text-muted-foreground text-sm mt-0.5">SA businesses for the content pipeline</p>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
@@ -163,44 +190,58 @@ export default function Businesses() {
         </Dialog>
       </div>
 
-      <Card className="shadow-sm">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-5 space-y-3">{[1,2,3,4].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
-          ) : !businesses?.length ? (
-            <div className="py-16 text-center">
-              <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">No businesses yet. Add one to get started.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-border">
-              {businesses.map((biz) => (
-                <li key={biz.id} className="px-5 py-4 flex items-start gap-4 hover:bg-muted/30 transition-colors" data-testid={`row-business-${biz.id}`}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-foreground">{biz.name}</span>
-                      <Badge variant="outline" className={`text-xs ${STATUS_COLORS[biz.status] ?? ""}`}>{biz.status}</Badge>
-                    </div>
-                    <div className="flex items-center gap-4 mt-1 flex-wrap">
-                      {biz.province && <span className="flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="w-3 h-3" />{biz.province}</span>}
-                      {biz.industry && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Tag className="w-3 h-3" />{biz.industry}</span>}
-                      {biz.website && <span className="flex items-center gap-1 text-xs text-muted-foreground"><Globe className="w-3 h-3" />{biz.website}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditBusiness(biz)} data-testid={`button-edit-${biz.id}`}>
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteId(biz.id)} data-testid={`button-delete-${biz.id}`}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {/* Published Businesses */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-base">Published</h2>
+          <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">{publishedBusinesses.length}</Badge>
+        </div>
+        <Card className="shadow-sm">
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-5 space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+            ) : publishedBusinesses.length === 0 ? (
+              <div className="py-10 text-center">
+                <p className="text-muted-foreground text-sm">No published businesses yet. Approve content to publish one.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {publishedBusinesses.map((biz) => (
+                  <BusinessRow key={biz.id} biz={biz} />
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Pipeline */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <ListTodo className="w-4 h-4 text-accent-foreground" />
+          <h2 className="font-semibold text-base">Pipeline</h2>
+          <Badge variant="outline" className="text-xs bg-accent/20 text-accent-foreground border-accent/30">{pipelineBusinesses.length}</Badge>
+        </div>
+        <Card className="shadow-sm">
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="p-5 space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+            ) : pipelineBusinesses.length === 0 ? (
+              <div className="py-10 text-center">
+                <Building2 className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">No businesses in the pipeline. Add one to get started.</p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {pipelineBusinesses.map((biz) => (
+                  <BusinessRow key={biz.id} biz={biz} />
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Dialog open={!!editBusiness} onOpenChange={(o) => !o && setEditBusiness(null)}>
         <DialogContent>

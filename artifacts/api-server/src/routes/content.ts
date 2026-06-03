@@ -94,6 +94,13 @@ router.patch("/content/:id", async (req, res) => {
     return;
   }
 
+  // Fetch current row so we know what status to transition from
+  const [current] = await db.select().from(contentTable).where(eq(contentTable.id, params.data.id));
+  if (!current) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
   const updates: Record<string, unknown> = {};
   const d = body.data;
   if (d.founderName !== undefined) updates.founderName = d.founderName;
@@ -104,6 +111,12 @@ router.patch("/content/:id", async (req, res) => {
   if (d.location !== undefined) updates.location = d.location;
   if (d.madeInSA !== undefined) updates.madeInSA = d.madeInSA;
   if (d.callToAction !== undefined) updates.callToAction = d.callToAction;
+  if (d.websiteUrl !== undefined) updates.websiteUrl = d.websiteUrl;
+
+  // Saving content in pending_review moves it to draft
+  if (current.status === "pending_review") {
+    updates.status = "draft";
+  }
 
   const [updated] = await db
     .update(contentTable)
@@ -135,43 +148,40 @@ router.post("/content/:id/approve", async (req, res) => {
 
   const [biz] = await db.select().from(businessesTable).where(eq(businessesTable.id, row.businessId));
 
+  // Always move straight to published — Supabase push is a side effect, not a gate
   const [updated] = await db
     .update(contentTable)
-    .set({ status: "approved", approvedAt: new Date() })
+    .set({ status: "published", approvedAt: new Date(), publishedAt: new Date() })
     .where(eq(contentTable.id, params.data.id))
     .returning();
 
+  // Mark the business itself as published so it appears in the Published list
   await db.update(businessesTable)
     .set({ status: "published" })
     .where(eq(businessesTable.id, row.businessId));
 
-  await db.insert(activityTable).values({
-    type: "content_approved",
-    description: `Content approved for ${biz?.name ?? "business"}`,
+  await db.insert(notificationsTable).values({
+    title: "Content published",
+    message: `Content for "${biz?.name ?? "business"}" has been approved and published.`,
+    type: "published",
+    contentId: updated.id,
   });
 
-  const pushed = await pushToSupabase(params.data.id);
-  if (pushed) {
-    await db
-      .update(contentTable)
-      .set({ status: "published", publishedAt: new Date() })
-      .where(eq(contentTable.id, params.data.id));
+  await db.insert(activityTable).values({
+    type: "content_published",
+    description: `Content published for ${biz?.name ?? "business"}`,
+  });
 
-    await db.insert(notificationsTable).values({
-      title: "Content published to Lovable site",
-      message: `Content for "${biz?.name ?? "business"}" was pushed to your Supabase/Lovable site.`,
-      type: "published",
-      contentId: updated.id,
-    });
+  // Try to push to Supabase in the background — failure doesn't affect the published status
+  pushToSupabase(params.data.id).then(pushed => {
+    if (pushed) {
+      logger.info({ contentId: params.data.id }, "Content pushed to Supabase successfully");
+    }
+  }).catch(err => {
+    logger.warn({ err, contentId: params.data.id }, "Supabase push failed silently");
+  });
 
-    await db.insert(activityTable).values({
-      type: "content_published",
-      description: `Content published for ${biz?.name ?? "business"}`,
-    });
-  }
-
-  const [final] = await db.select().from(contentTable).where(eq(contentTable.id, params.data.id));
-  res.json(serializeContent(final ?? updated, biz?.name ?? "Unknown"));
+  res.json(serializeContent(updated, biz?.name ?? "Unknown"));
 });
 
 router.post("/content/:id/reject", async (req, res) => {
