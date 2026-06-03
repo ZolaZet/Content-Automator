@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { businessesTable, contentTable, notificationsTable, activityTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, notInArray } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { logger } from "./logger";
 
@@ -184,27 +184,36 @@ Return this exact JSON structure (all fields as strings, use null if unknown):
 }
 
 export async function pickNextBusiness(): Promise<number | null> {
-  const today = new Date().toISOString().slice(0, 10);
-
-  const alreadyScheduled = await db
-    .select()
+  // Find businesses that already have content sitting in the review queue.
+  // We don't want to generate a second batch for a business that hasn't been
+  // reviewed yet — wait until it is approved or rejected first.
+  const awaitingReview = await db
+    .select({ businessId: contentTable.businessId })
     .from(contentTable)
-    .where(eq(contentTable.scheduledDate, today));
+    .where(eq(contentTable.status, "pending_review"));
 
-  if (alreadyScheduled.length > 0) {
-    return alreadyScheduled[0].businessId;
-  }
+  const blockedIds = awaitingReview.map(r => r.businessId);
 
-  const pending = await db
-    .select()
-    .from(businessesTable)
-    .where(eq(businessesTable.status, "pending"));
+  const available = blockedIds.length > 0
+    ? await db
+        .select()
+        .from(businessesTable)
+        .where(
+          notInArray(businessesTable.id, blockedIds)
+        )
+    : await db
+        .select()
+        .from(businessesTable);
+
+  // Only pick from businesses that are in "pending" status
+  const pending = available.filter(b => b.status === "pending");
 
   if (pending.length === 0) {
-    logger.warn("No pending businesses to generate content for");
+    logger.warn({ blockedCount: blockedIds.length }, "No pending businesses available — all are either awaiting review or already published");
     return null;
   }
 
-  const randomBusiness = pending[Math.floor(Math.random() * pending.length)];
-  return randomBusiness.id;
+  // Pick the next one in order (oldest first so we work through the list sequentially)
+  const next = pending[0];
+  return next.id;
 }
