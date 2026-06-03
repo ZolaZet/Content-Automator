@@ -267,13 +267,47 @@ export const ChatWithContentResponse = zod.object({
 });
 
 /**
- * @summary Approve content and push to Supabase
+ * @summary Approve content (human sign-off, no Supabase push yet)
  */
 export const ApproveContentParams = zod.object({
   id: zod.coerce.number(),
 });
 
 export const ApproveContentResponse = zod.object({
+  id: zod.number(),
+  businessId: zod.number(),
+  businessName: zod.string(),
+  founderName: zod.string().nullish(),
+  founderBio: zod.string().nullish(),
+  standoutProduct: zod.string().nullish(),
+  productDescription: zod.string().nullish(),
+  businessDescription: zod.string().nullish(),
+  location: zod.string().nullish(),
+  madeInSA: zod.string().nullish(),
+  callToAction: zod.string().nullish(),
+  websiteUrl: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "pending_review",
+    "approved",
+    "published",
+    "rejected",
+  ]),
+  rejectionNote: zod.string().nullish(),
+  generatedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  publishedAt: zod.coerce.date().nullish(),
+  scheduledDate: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary Publish approved content and push to Supabase
+ */
+export const PublishContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PublishContentResponse = zod.object({
   id: zod.number(),
   businessId: zod.number(),
   businessName: zod.string(),

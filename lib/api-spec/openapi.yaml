@@ -238,7 +238,7 @@ paths:
     post:
       operationId: approveContent
       tags: [content]
-      summary: Approve content and push to Supabase
+      summary: Approve content (human sign-off, no Supabase push yet)
       parameters:
         - in: path
           name: id
@@ -247,7 +247,26 @@ paths:
             type: integer
       responses:
         "200":
-          description: Approved and pushed
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentEntry"
+
+  /content/{id}/publish:
+    post:
+      operationId: publishContent
+      tags: [content]
+      summary: Publish approved content and push to Supabase
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Published and pushed to Supabase
           content:
             application/json:
               schema:

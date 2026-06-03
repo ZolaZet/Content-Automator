@@ -999,7 +999,7 @@ export const useChatWithContent = <
 };
 
 /**
- * @summary Approve content and push to Supabase
+ * @summary Approve content (human sign-off, no Supabase push yet)
  */
 export const getApproveContentUrl = (id: number) => {
   return `/api/content/${id}/approve`;
@@ -1060,7 +1060,7 @@ export type ApproveContentMutationResult = NonNullable<
 export type ApproveContentMutationError = ErrorType<unknown>;
 
 /**
- * @summary Approve content and push to Supabase
+ * @summary Approve content (human sign-off, no Supabase push yet)
  */
 export const useApproveContent = <
   TError = ErrorType<unknown>,
@@ -1080,6 +1080,90 @@ export const useApproveContent = <
   TContext
 > => {
   return useMutation(getApproveContentMutationOptions(options));
+};
+
+/**
+ * @summary Publish approved content and push to Supabase
+ */
+export const getPublishContentUrl = (id: number) => {
+  return `/api/content/${id}/publish`;
+};
+
+export const publishContent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ContentEntry> => {
+  return customFetch<ContentEntry>(getPublishContentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPublishContentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishContent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof publishContent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["publishContent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof publishContent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return publishContent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PublishContentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof publishContent>>
+>;
+
+export type PublishContentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Publish approved content and push to Supabase
+ */
+export const usePublishContent = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishContent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof publishContent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPublishContentMutationOptions(options));
 };
 
 /**

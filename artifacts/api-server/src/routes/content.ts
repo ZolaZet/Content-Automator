@@ -148,10 +148,46 @@ router.post("/content/:id/approve", async (req, res) => {
 
   const [biz] = await db.select().from(businessesTable).where(eq(businessesTable.id, row.businessId));
 
-  // Always move straight to published — Supabase push is a side effect, not a gate
+  // Human sign-off only — no Supabase push yet
   const [updated] = await db
     .update(contentTable)
-    .set({ status: "published", approvedAt: new Date(), publishedAt: new Date() })
+    .set({ status: "approved", approvedAt: new Date() })
+    .where(eq(contentTable.id, params.data.id))
+    .returning();
+
+  await db.insert(notificationsTable).values({
+    title: "Content approved",
+    message: `Content for "${biz?.name ?? "business"}" has been approved and is ready to publish.`,
+    type: "approved",
+    contentId: updated.id,
+  });
+
+  await db.insert(activityTable).values({
+    type: "content_approved",
+    description: `Content approved for ${biz?.name ?? "business"}`,
+  });
+
+  res.json(serializeContent(updated, biz?.name ?? "Unknown"));
+});
+
+router.post("/content/:id/publish", async (req, res) => {
+  const params = ApproveContentParams.safeParse({ id: Number(req.params.id) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const [row] = await db.select().from(contentTable).where(eq(contentTable.id, params.data.id));
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const [biz] = await db.select().from(businessesTable).where(eq(businessesTable.id, row.businessId));
+
+  const [updated] = await db
+    .update(contentTable)
+    .set({ status: "published", publishedAt: new Date() })
     .where(eq(contentTable.id, params.data.id))
     .returning();
 
@@ -162,7 +198,7 @@ router.post("/content/:id/approve", async (req, res) => {
 
   await db.insert(notificationsTable).values({
     title: "Content published",
-    message: `Content for "${biz?.name ?? "business"}" has been approved and published.`,
+    message: `Content for "${biz?.name ?? "business"}" has been published.`,
     type: "published",
     contentId: updated.id,
   });

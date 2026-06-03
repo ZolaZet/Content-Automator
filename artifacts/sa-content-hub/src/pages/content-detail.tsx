@@ -5,6 +5,7 @@ import {
   getGetContentQueryKey,
   useUpdateContent,
   useApproveContent,
+  usePublishContent,
   useRejectContent,
   useRegenerateContent,
   useChatWithContent,
@@ -17,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowLeft, CheckCircle2, XCircle, Save, ExternalLink,
-  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe,
+  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe, Upload,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -110,6 +111,7 @@ export default function ContentDetail() {
 
   const updateContent = useUpdateContent();
   const approveContent = useApproveContent();
+  const publishContent = usePublishContent();
   const rejectContent = useRejectContent();
   const regenerateContent = useRegenerateContent();
   const chatWithContent = useChatWithContent();
@@ -150,10 +152,20 @@ export default function ContentDetail() {
     approveContent.mutate({ id: numId }, {
       onSuccess: () => {
         invalidate();
-        toast({ title: "Content approved", description: "Ready to push to your Lovable site." });
-        setLocation("/content");
+        toast({ title: "Content approved", description: "Ready to publish to your Lovable site." });
       },
       onError: () => toast({ title: "Approval failed", variant: "destructive" }),
+    });
+  };
+
+  const handlePublish = () => {
+    publishContent.mutate({ id: numId }, {
+      onSuccess: () => {
+        invalidate();
+        toast({ title: "Content published", description: "Pushed to Supabase successfully." });
+        setLocation("/content");
+      },
+      onError: () => toast({ title: "Publish failed", variant: "destructive" }),
     });
   };
 
@@ -250,6 +262,8 @@ export default function ContentDetail() {
 
   const canEdit = entry.status === "pending_review" || entry.status === "draft";
   const canApprove = entry.status === "pending_review" || entry.status === "draft";
+  const canPublish = entry.status === "approved";
+  const canReject = canApprove || canPublish;
 
   const fieldLabel: Record<string, string> = {
     founderName: "Founder Name",
@@ -426,10 +440,16 @@ export default function ContentDetail() {
               {canApprove && (
                 <Button type="button" onClick={handleApprove} disabled={approveContent.isPending} className="gap-1.5 bg-secondary hover:bg-secondary/90" data-testid="button-approve-content">
                   <CheckCircle2 className="w-4 h-4" />
-                  {approveContent.isPending ? "Approving..." : "Approve & Publish"}
+                  {approveContent.isPending ? "Approving..." : "Approve"}
                 </Button>
               )}
-              {canApprove && (
+              {canPublish && (
+                <Button type="button" onClick={handlePublish} disabled={publishContent.isPending} className="gap-1.5 bg-primary hover:bg-primary/90" data-testid="button-publish-content">
+                  <Upload className="w-4 h-4" />
+                  {publishContent.isPending ? "Publishing..." : "Publish to Supabase"}
+                </Button>
+              )}
+              {canReject && (
                 <Button type="button" variant="outline" onClick={() => setRejectOpen(true)} className="gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/5" data-testid="button-reject-content">
                   <XCircle className="w-4 h-4" />
                   Reject
