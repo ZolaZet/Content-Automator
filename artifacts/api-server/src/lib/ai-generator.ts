@@ -1,8 +1,9 @@
 import { db } from "@workspace/db";
-import { businessesTable, contentTable, notificationsTable, activityTable } from "@workspace/db";
+import { businessesTable, contentTable, notificationsTable, activityTable, settingsTable } from "@workspace/db";
 import { eq, notInArray } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { logger } from "./logger";
+import { sendContentReadyEmail } from "./mailer";
 
 export async function generateContentForBusiness(businessId: number) {
   const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, businessId));
@@ -92,6 +93,19 @@ Return this exact JSON structure (all fields as strings, use null if unknown):
     type: "content_generated",
     description: `Content generated for ${business.name}`,
   });
+
+  // Send email notification if enabled
+  const settingsRows = await db.select().from(settingsTable);
+  const settings = settingsRows[0];
+  if (settings?.emailNotificationsEnabled && settings.notificationEmail) {
+    const appUrl = process.env["APP_URL"] ?? `https://${process.env["REPLIT_DEV_DOMAIN"] ?? "localhost"}`;
+    await sendContentReadyEmail({
+      to: settings.notificationEmail,
+      businessName: business.name,
+      contentId: content.id,
+      appUrl,
+    });
+  }
 
   logger.info({ contentId: content.id, businessId }, "Content generated successfully");
   return content;

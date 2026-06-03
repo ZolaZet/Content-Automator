@@ -14,7 +14,7 @@ import { z } from "zod";
 import {
   Save, Zap, Database, Mail, Clock,
   CheckCircle2, XCircle, AlertCircle, Loader2,
-  ExternalLink, Eye, EyeOff, ChevronDown, ChevronUp, Copy, Check,
+  ExternalLink, Eye, EyeOff, ChevronDown, ChevronUp, Copy, Check, SendHorizonal,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -188,6 +188,8 @@ export default function Settings() {
   const [connProjectRef, setConnProjectRef] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [howToOpen, setHowToOpen] = useState(false);
+  const [testEmailStatus, setTestEmailStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [testEmailError, setTestEmailError] = useState<string | null>(null);
 
   const form = useForm<SettingsValues>({
     resolver: zodResolver(settingsSchema),
@@ -249,6 +251,25 @@ export default function Settings() {
         },
       }
     );
+  };
+
+  const handleTestEmail = async () => {
+    setTestEmailStatus("sending");
+    setTestEmailError(null);
+    try {
+      const res = await fetch("/api/settings/test-email", { method: "POST" });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (data.ok) {
+        setTestEmailStatus("sent");
+        toast({ title: "Test email sent!", description: "Check your inbox." });
+      } else {
+        setTestEmailStatus("error");
+        setTestEmailError(data.error ?? "Failed to send test email");
+      }
+    } catch {
+      setTestEmailStatus("error");
+      setTestEmailError("Could not reach the server");
+    }
   };
 
   const handleManualGenerate = () => {
@@ -422,6 +443,31 @@ export default function Settings() {
                   </FormControl>
                 </FormItem>
               )} />
+
+              <div className="flex items-center gap-3 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestEmail}
+                  disabled={testEmailStatus === "sending"}
+                  className="gap-1.5"
+                  data-testid="button-test-email"
+                >
+                  {testEmailStatus === "sending"
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending…</>
+                    : <><SendHorizonal className="w-3.5 h-3.5" /> Send test email</>}
+                </Button>
+                {testEmailStatus === "sent" && (
+                  <span className="flex items-center gap-1 text-xs text-secondary"><CheckCircle2 className="w-3.5 h-3.5" /> Sent — check your inbox</span>
+                )}
+                {testEmailStatus === "error" && (
+                  <span className="flex items-center gap-1 text-xs text-destructive"><XCircle className="w-3.5 h-3.5" /> {testEmailError}</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Requires <code className="bg-muted px-1 rounded">SMTP_HOST</code>, <code className="bg-muted px-1 rounded">SMTP_USER</code>, and <code className="bg-muted px-1 rounded">SMTP_PASS</code> in your environment secrets.
+              </p>
             </CardContent>
           </Card>
 

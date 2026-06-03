@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { UpdateSettingsBody, TestSupabaseConnectionBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { reschedule } from "../lib/scheduler";
+import { sendTestEmail, isMailerConfigured } from "../lib/mailer";
 
 const router = Router();
 
@@ -67,6 +68,23 @@ router.put("/settings", async (req, res) => {
   }
 
   res.json(buildSettingsResponse(updated));
+});
+
+router.post("/settings/test-email", async (req, res) => {
+  if (!isMailerConfigured()) {
+    res.json({ ok: false, error: "SMTP not configured. Add SMTP_HOST, SMTP_USER, and SMTP_PASS to your environment secrets." });
+    return;
+  }
+
+  const settings = await ensureSettings();
+  if (!settings.notificationEmail) {
+    res.json({ ok: false, error: "No notification email saved. Enter an email address and save settings first." });
+    return;
+  }
+
+  const appUrl = process.env["APP_URL"] ?? `https://${process.env["REPLIT_DEV_DOMAIN"] ?? "localhost"}`;
+  const result = await sendTestEmail(settings.notificationEmail, appUrl);
+  res.json(result);
 });
 
 // Test a Supabase connection before saving
