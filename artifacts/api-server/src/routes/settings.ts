@@ -4,6 +4,7 @@ import { settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpdateSettingsBody, TestSupabaseConnectionBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
+import { reschedule } from "../lib/scheduler";
 
 const router = Router();
 
@@ -58,6 +59,12 @@ router.put("/settings", async (req, res) => {
     .set(updates)
     .where(eq(settingsTable.id, current.id))
     .returning();
+
+  // If schedule time changed, reschedule immediately
+  if (data.dailyScheduleTime !== undefined && updated.dailyScheduleTime) {
+    reschedule(updated.dailyScheduleTime);
+    logger.info({ dailyScheduleTime: updated.dailyScheduleTime }, "Schedule time updated");
+  }
 
   res.json(buildSettingsResponse(updated));
 });

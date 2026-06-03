@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { businessesTable, contentTable, activityTable } from "@workspace/db";
+import { businessesTable, contentTable, activityTable, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -24,9 +24,22 @@ router.get("/dashboard/stats", async (_req, res) => {
   ).length;
 
   const pendingBusinesses = businesses.filter((b) => b.status === "pending");
-  const nextScheduledDate = pendingBusinesses.length > 0
-    ? new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-    : null;
+
+  // Compute the actual next run date based on the configured schedule time
+  let nextScheduledDate: string | null = null;
+  if (pendingBusinesses.length > 0) {
+    const settings = await db.select().from(settingsTable);
+    const scheduleTime = settings[0]?.dailyScheduleTime ?? "08:00";
+    const [hh, mm] = scheduleTime.split(":").map(Number);
+    if (hh !== undefined && mm !== undefined && !isNaN(hh) && !isNaN(mm)) {
+      // Use SA time (UTC+2) to figure out whether today's slot has passed
+      const nowSA = new Date(new Date().toLocaleString("en-US", { timeZone: "Africa/Johannesburg" }));
+      const todaySlot = new Date(nowSA);
+      todaySlot.setHours(hh, mm, 0, 0);
+      const target = nowSA < todaySlot ? nowSA : new Date(nowSA.getTime() + 86400000);
+      nextScheduledDate = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}-${String(target.getDate()).padStart(2, "0")} at ${scheduleTime}`;
+    }
+  }
 
   const activity = recentActivity
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
