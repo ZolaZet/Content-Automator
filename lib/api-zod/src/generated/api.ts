@@ -130,6 +130,10 @@ export const ListContentResponseItem = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 export const ListContentResponse = zod.array(ListContentResponseItem);
 
@@ -165,6 +169,10 @@ export const GetContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**
@@ -211,6 +219,10 @@ export const UpdateContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**
@@ -245,6 +257,10 @@ export const RegenerateContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**
@@ -298,6 +314,10 @@ export const ApproveContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**
@@ -332,6 +352,10 @@ export const PublishContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**
@@ -370,6 +394,10 @@ export const RejectContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**
@@ -400,6 +428,10 @@ export const GenerateContentResponse = zod.object({
   approvedAt: zod.coerce.date().nullish(),
   publishedAt: zod.coerce.date().nullish(),
   scheduledDate: zod.coerce.date().nullish(),
+  researchSources: zod
+    .array(zod.string())
+    .nullish()
+    .describe("URLs used as sources during AI web research"),
 });
 
 /**

@@ -20,6 +20,7 @@ export const contentTable = pgTable("content_entries", {
   status: text("status").notNull().default("draft"),
   rejectionNote: text("rejection_note"),
   scheduledDate: text("scheduled_date"),
+  researchSources: text("research_sources"),
   generatedAt: timestamp("generated_at"),
   approvedAt: timestamp("approved_at"),
   publishedAt: timestamp("published_at"),

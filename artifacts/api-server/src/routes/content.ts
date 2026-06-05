@@ -40,6 +40,7 @@ function serializeContent(c: typeof contentTable.$inferSelect, businessName: str
     websiteUrl: c.websiteUrl ?? null,
     status: c.status,
     rejectionNote: c.rejectionNote ?? null,
+    researchSources: c.researchSources ? (JSON.parse(c.researchSources) as string[]) : null,
     generatedAt: c.generatedAt ?? null,
     approvedAt: c.approvedAt ?? null,
     publishedAt: c.publishedAt ?? null,

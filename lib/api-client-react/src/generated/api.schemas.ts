@@ -85,6 +85,8 @@ export interface ContentEntry {
   approvedAt?: string | null;
   publishedAt?: string | null;
   scheduledDate?: string | null;
+  /** URLs used as sources during AI web research */
+  researchSources?: string[] | null;
 }
 
 export interface UpdateContentBody {

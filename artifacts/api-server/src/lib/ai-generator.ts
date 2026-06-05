@@ -75,9 +75,11 @@ export async function generateContentForBusiness(businessId: number) {
 
   // Step 1: live web research
   let research = "";
+  let researchSources: string[] = [];
   try {
     const result = await researchBusinessWithAI(business.name, business.website);
     research = result.context;
+    researchSources = result.sourcesUsed;
   } catch (err) {
     logger.warn({ err, businessId }, "Web research failed, proceeding without it");
   }
@@ -108,6 +110,7 @@ export async function generateContentForBusiness(businessId: number) {
       madeInSA: parsed.madeInSA ?? null,
       callToAction: parsed.callToAction ?? null,
       websiteUrl: parsed.websiteUrl ?? null,
+      researchSources: researchSources.length > 0 ? JSON.stringify(researchSources) : null,
       status: "pending_review",
       scheduledDate: today,
       generatedAt: new Date(),
@@ -152,9 +155,11 @@ export async function regenerateContentEntry(contentId: number) {
 
   // Step 1: live web research
   let research = "";
+  let researchSources: string[] = [];
   try {
     const result = await researchBusinessWithAI(business.name, business.website);
     research = result.context;
+    researchSources = result.sourcesUsed;
   } catch (err) {
     logger.warn({ err, contentId }, "Web research failed, proceeding without it");
   }
@@ -181,6 +186,7 @@ export async function regenerateContentEntry(contentId: number) {
       madeInSA: parsed.madeInSA ?? null,
       callToAction: parsed.callToAction ?? null,
       websiteUrl: parsed.websiteUrl ?? null,
+      researchSources: researchSources.length > 0 ? JSON.stringify(researchSources) : null,
       status: "pending_review",
       rejectionNote: null,
       generatedAt: new Date(),

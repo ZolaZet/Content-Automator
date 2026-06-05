@@ -546,6 +546,12 @@ components:
           type: string
           format: date
           nullable: true
+        researchSources:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: URLs used as sources during AI web research
       required: [id, businessId, businessName, status]
 
     UpdateContentBody:

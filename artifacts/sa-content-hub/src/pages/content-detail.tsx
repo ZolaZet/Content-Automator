@@ -18,7 +18,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowLeft, CheckCircle2, XCircle, Save, ExternalLink,
-  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe, Upload,
+  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe, Upload, Link2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,7 @@ export default function ContentDetail() {
   const [rejectNote, setRejectNote] = useState("");
   const [regenOpen, setRegenOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [pendingIsSearch, setPendingIsSearch] = useState(false);
@@ -464,6 +465,51 @@ export default function ContentDetail() {
             </div>
           </form>
         </Form>
+
+        {/* Research Sources */}
+        {entry.researchSources && entry.researchSources.length > 0 && (
+          <Card className="shadow-sm border-muted">
+            <CardHeader
+              className="pb-2 pt-3 px-4 cursor-pointer select-none"
+              onClick={() => setSourcesOpen(o => !o)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Research Sources
+                  </span>
+                  <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">
+                    {entry.researchSources.length}
+                  </span>
+                </div>
+                {sourcesOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+              </div>
+            </CardHeader>
+            {sourcesOpen && (
+              <CardContent className="pt-0 px-4 pb-3">
+                <p className="text-xs text-muted-foreground mb-2">
+                  URLs the AI searched during content generation — use these to verify facts.
+                </p>
+                <ul className="space-y-1">
+                  {entry.researchSources.map((url, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <Globe className="w-3 h-3 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline break-all leading-tight"
+                      >
+                        {url}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            )}
+          </Card>
+        )}
       </div>
 
       {/* AI Chat sidebar */}
