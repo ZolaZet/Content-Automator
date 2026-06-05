@@ -828,6 +828,90 @@ export const useUpdateContent = <
 };
 
 /**
+ * @summary Delete a content entry
+ */
+export const getDeleteContentUrl = (id: number) => {
+  return `/api/content/${id}`;
+};
+
+export const deleteContent = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteContentUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteContentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteContent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteContent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteContent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteContent>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteContent(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteContentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteContent>>
+>;
+
+export type DeleteContentMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a content entry
+ */
+export const useDeleteContent = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteContent>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteContent>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteContentMutationOptions(options));
+};
+
+/**
  * @summary Regenerate all AI content fields from scratch for this entry
  */
 export const getRegenerateContentUrl = (id: number) => {

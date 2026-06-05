@@ -189,6 +189,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContentEntry"
+    delete:
+      operationId: deleteContent
+      tags: [content]
+      summary: Delete a content entry
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
 
   /content/{id}/regenerate:
     post:

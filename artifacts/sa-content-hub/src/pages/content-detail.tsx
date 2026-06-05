@@ -8,6 +8,7 @@ import {
   usePublishContent,
   useRejectContent,
   useRegenerateContent,
+  useDeleteContent,
   useChatWithContent,
   getListContentQueryKey,
   getGetDashboardStatsQueryKey,
@@ -18,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
   ArrowLeft, CheckCircle2, XCircle, Save, ExternalLink,
-  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe, Upload, Link2,
+  Bot, Send, User, Sparkles, ChevronDown, ChevronUp, RefreshCw, Globe, Upload, Link2, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,7 @@ export default function ContentDetail() {
   const publishContent = usePublishContent();
   const rejectContent = useRejectContent();
   const regenerateContent = useRegenerateContent();
+  const deleteContent = useDeleteContent();
   const chatWithContent = useChatWithContent();
 
   const form = useForm<EditValues>({
@@ -191,6 +193,18 @@ export default function ContentDetail() {
         setLocation("/content");
       },
       onError: () => toast({ title: "Rejection failed", variant: "destructive" }),
+    });
+  };
+
+  const handleDelete = () => {
+    deleteContent.mutate({ id: numId }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListContentQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+        toast({ title: "Entry deleted" });
+        setLocation("/content");
+      },
+      onError: () => toast({ title: "Delete failed", variant: "destructive" }),
     });
   };
 
@@ -462,6 +476,10 @@ export default function ContentDetail() {
                   {regenerateContent.isPending ? "Regenerating..." : "Regenerate All"}
                 </Button>
               )}
+              <Button type="button" variant="ghost" onClick={handleDelete} disabled={deleteContent.isPending} className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive" data-testid="button-delete-content">
+                <Trash2 className="w-4 h-4" />
+                {deleteContent.isPending ? "Deleting..." : "Delete"}
+              </Button>
             </div>
           </form>
         </Form>

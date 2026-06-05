@@ -226,6 +226,13 @@ export const UpdateContentResponse = zod.object({
 });
 
 /**
+ * @summary Delete a content entry
+ */
+export const DeleteContentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Regenerate all AI content fields from scratch for this entry
  */
 export const RegenerateContentParams = zod.object({
