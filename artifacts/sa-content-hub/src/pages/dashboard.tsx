@@ -10,15 +10,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useGenerateContent } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 
-function StatCard({ icon: Icon, label, value, color, isLoading }: {
+function StatCard({ icon: Icon, label, value, color, isLoading, href }: {
   icon: React.ElementType;
   label: string;
   value: number | string | undefined;
   color: string;
   isLoading: boolean;
+  href?: string;
 }) {
-  return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
+  const inner = (
+    <Card className={`shadow-sm transition-all duration-200 ${href ? "hover:shadow-md hover:ring-2 hover:ring-primary/20 cursor-pointer" : ""}`}>
       <CardContent className="p-5">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${color}`}>
@@ -36,6 +37,8 @@ function StatCard({ icon: Icon, label, value, color, isLoading }: {
       </CardContent>
     </Card>
   );
+  if (href) return <Link href={href}>{inner}</Link>;
+  return inner;
 }
 
 function activityIcon(type: string) {
@@ -83,10 +86,10 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Building2} label="Total Businesses" value={stats?.totalBusinesses} color="bg-primary/10 text-primary" isLoading={isLoading} />
-        <StatCard icon={Clock} label="Pending Review" value={stats?.pendingReview} color="bg-accent/20 text-accent-foreground" isLoading={isLoading} />
-        <StatCard icon={CheckCircle2} label="Published This Month" value={stats?.publishedThisMonth} color="bg-secondary/10 text-secondary" isLoading={isLoading} />
-        <StatCard icon={TrendingUp} label="Total Published" value={stats?.totalPublished} color="bg-chart-4/10 text-chart-4" isLoading={isLoading} />
+        <StatCard icon={Building2} label="Total Businesses" value={stats?.totalBusinesses} color="bg-primary/10 text-primary" isLoading={isLoading} href="/businesses" />
+        <StatCard icon={Clock} label="Pending Review" value={stats?.pendingReview} color="bg-accent/20 text-accent-foreground" isLoading={isLoading} href="/content?status=pending_review" />
+        <StatCard icon={CheckCircle2} label="Published This Month" value={stats?.publishedThisMonth} color="bg-secondary/10 text-secondary" isLoading={isLoading} href="/content?status=published" />
+        <StatCard icon={TrendingUp} label="Total Published" value={stats?.totalPublished} color="bg-chart-4/10 text-chart-4" isLoading={isLoading} href="/content?status=published" />
       </div>
 
       {stats?.nextScheduledDate && (
