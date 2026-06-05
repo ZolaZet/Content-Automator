@@ -1,3 +1,4 @@
+import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { logger } from "./logger";
 
 const FETCH_TIMEOUT_MS = 8000;
@@ -96,6 +97,76 @@ export function detectSearchIntent(message: string): boolean {
   return keywords.some(k => lower.includes(k));
 }
 
+interface WebSearchToolResultContent {
+  type: "web_search_result";
+  url?: string;
+  title?: string;
+  encrypted_content?: string;
+}
+
+interface WebSearchToolResultBlock {
+  type: "web_search_tool_result";
+  tool_use_id: string;
+  content: WebSearchToolResultContent[];
+}
+
+/**
+ * Research a business using Claude's built-in web search tool.
+ * Returns a structured summary with sources, suitable for injecting into a generation prompt.
+ */
+export async function researchBusinessWithAI(
+  businessName: string,
+  website?: string | null,
+): Promise<WebResearchResult> {
+  const websiteHint = website ? ` (website: ${website})` : "";
+  const prompt = `Research the South African business "${businessName}"${websiteHint}.
+
+Find and summarise:
+1. The founder's full name and their background / founding story
+2. Their most notable or standout products / services with specific names
+3. Their city and province location
+4. What makes them uniquely South African — heritage, community impact, craft
+5. A brief description of their business mission
+
+Provide accurate, specific, factual information from reliable sources. Be concise.`;
+
+  try {
+    logger.info({ businessName }, "Running AI web research before content generation");
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 2048,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      tools: [{ type: "web_search_20250305", name: "web_search" }] as any,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const sourcesUsed: string[] = [];
+    const textParts: string[] = [];
+
+    for (const block of response.content) {
+      if (block.type === "web_search_tool_result") {
+        const searchBlock = block as unknown as WebSearchToolResultBlock;
+        for (const r of searchBlock.content ?? []) {
+          if (r.url && !sourcesUsed.includes(r.url)) {
+            sourcesUsed.push(r.url);
+          }
+        }
+      } else if (block.type === "text") {
+        textParts.push(block.text);
+      }
+    }
+
+    const context = textParts.join("\n").trim();
+    logger.info({ businessName, sourcesCount: sourcesUsed.length, contextLength: context.length }, "AI web research complete");
+
+    return { sourcesUsed, context };
+  } catch (err) {
+    logger.warn({ err, businessName }, "AI web research failed, falling back to DuckDuckGo");
+    return researchBusiness(businessName, website);
+  }
+}
+
 export async function researchBusiness(
   businessName: string,
   websiteUrl?: string | null,
@@ -104,7 +175,6 @@ export async function researchBusiness(
   const sourcesUsed: string[] = [];
   const contextParts: string[] = [];
 
-  // Fetch the business website if available
   if (websiteUrl) {
     logger.info({ url: websiteUrl }, "Fetching business website");
     const pageText = await fetchPage(websiteUrl);
@@ -114,7 +184,6 @@ export async function researchBusiness(
     }
   }
 
-  // Search DuckDuckGo for the business
   const searchQuery = extraQuery
     ? `${businessName} South Africa ${extraQuery}`
     : `${businessName} South Africa`;

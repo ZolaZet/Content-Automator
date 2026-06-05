@@ -4,23 +4,9 @@ import { eq, notInArray } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { logger } from "./logger";
 import { sendContentReadyEmail } from "./mailer";
+import { researchBusinessWithAI } from "./web-research";
 
-export async function generateContentForBusiness(businessId: number) {
-  const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, businessId));
-  if (!business) {
-    throw new Error(`Business ${businessId} not found`);
-  }
-
-  const prompt = `You are a content writer for a South African-made products website. Research and write website page content for this South African business. Return ONLY a valid JSON object, no markdown, no explanation.
-
-Business name: ${business.name}
-${business.website ? `Website: ${business.website}` : ""}
-${business.province ? `Province: ${business.province}` : ""}
-${business.industry ? `Industry: ${business.industry}` : ""}
-${business.notes ? `Additional notes: ${business.notes}` : ""}
-
-Return this exact JSON structure (all fields as strings, use null if unknown):
-{
+const JSON_SCHEMA = `{
   "founderName": "Full name of the business founder",
   "founderBio": "2-3 sentence bio about the founder's story and passion (max 80 words)",
   "standoutProduct": "Name of their most notable/standout product",
@@ -32,33 +18,79 @@ Return this exact JSON structure (all fields as strings, use null if unknown):
   "websiteUrl": "Website URL if known, otherwise null"
 }`;
 
-  logger.info({ businessId, businessName: business.name }, "Generating content via AI");
+function buildPrompt(
+  business: { name: string; website?: string | null; province?: string | null; industry?: string | null; notes?: string | null },
+  research: string,
+): string {
+  const researchSection = research
+    ? `\n\n--- LIVE WEB RESEARCH (use this for accurate facts) ---\n${research}\n--- END RESEARCH ---`
+    : "";
+
+  return `You are a content writer for a South African-made products website. Write website page content for this South African business. Return ONLY a valid JSON object, no markdown, no explanation.
+
+Business name: ${business.name}
+${business.website ? `Website: ${business.website}` : ""}
+${business.province ? `Province: ${business.province}` : ""}
+${business.industry ? `Industry: ${business.industry}` : ""}
+${business.notes ? `Additional notes: ${business.notes}` : ""}${researchSection}
+
+${research ? "Use the live research above for accurate founder names, product names, and descriptions. " : ""}Return this exact JSON structure (all fields as strings, use null if unknown):
+${JSON_SCHEMA}`;
+}
+
+function buildFallback(
+  business: { name: string; website?: string | null; province?: string | null; industry?: string | null },
+): Record<string, string | null> {
+  return {
+    founderName: null,
+    founderBio: null,
+    standoutProduct: null,
+    productDescription: null,
+    businessDescription: `${business.name} is a South African business${business.industry ? ` in the ${business.industry} industry` : ""}.`,
+    location: business.province ?? null,
+    madeInSA: "Proudly South African-made — supporting local entrepreneurs and communities.",
+    callToAction: "Discover this proudly South African business today",
+    websiteUrl: business.website ?? null,
+  };
+}
+
+async function callClaude(prompt: string): Promise<Record<string, string | null>> {
+  const message = await anthropic.messages.create({
+    model: "claude-haiku-4-5",
+    max_tokens: 8192,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const raw = message.content[0]?.type === "text" ? message.content[0].text : "";
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("No JSON found in response");
+  return JSON.parse(jsonMatch[0]) as Record<string, string | null>;
+}
+
+export async function generateContentForBusiness(businessId: number) {
+  const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, businessId));
+  if (!business) {
+    throw new Error(`Business ${businessId} not found`);
+  }
+
+  // Step 1: live web research
+  let research = "";
+  try {
+    const result = await researchBusinessWithAI(business.name, business.website);
+    research = result.context;
+  } catch (err) {
+    logger.warn({ err, businessId }, "Web research failed, proceeding without it");
+  }
+
+  // Step 2: generate content using research as context
+  logger.info({ businessId, businessName: business.name, hasResearch: !!research }, "Generating content via AI");
 
   let parsed: Record<string, string | null>;
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 8192,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const raw = message.content[0]?.type === "text" ? message.content[0].text : "";
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found in response");
-    parsed = JSON.parse(jsonMatch[0]) as Record<string, string | null>;
+    parsed = await callClaude(buildPrompt(business, research));
   } catch (err) {
     logger.error({ err, businessId }, "AI generation failed, using placeholder content");
-    parsed = {
-      founderName: null,
-      founderBio: null,
-      standoutProduct: null,
-      productDescription: null,
-      businessDescription: `${business.name} is a South African business${business.industry ? ` in the ${business.industry} industry` : ""}.`,
-      location: business.province ?? null,
-      madeInSA: "Proudly South African-made — supporting local entrepreneurs and communities.",
-      callToAction: "Discover this proudly South African business today",
-      websiteUrl: business.website ?? null,
-    };
+    parsed = buildFallback(business);
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -118,53 +150,23 @@ export async function regenerateContentEntry(contentId: number) {
   const [business] = await db.select().from(businessesTable).where(eq(businessesTable.id, existing.businessId));
   if (!business) throw new Error(`Business ${existing.businessId} not found`);
 
-  const prompt = `You are a content writer for a South African-made products website. Research and write website page content for this South African business. Return ONLY a valid JSON object, no markdown, no explanation.
+  // Step 1: live web research
+  let research = "";
+  try {
+    const result = await researchBusinessWithAI(business.name, business.website);
+    research = result.context;
+  } catch (err) {
+    logger.warn({ err, contentId }, "Web research failed, proceeding without it");
+  }
 
-Business name: ${business.name}
-${business.website ? `Website: ${business.website}` : ""}
-${business.province ? `Province: ${business.province}` : ""}
-${business.industry ? `Industry: ${business.industry}` : ""}
-${business.notes ? `Additional notes: ${business.notes}` : ""}
-
-Return this exact JSON structure (all fields as strings, use null if unknown):
-{
-  "founderName": "Full name of the business founder",
-  "founderBio": "2-3 sentence bio about the founder's story and passion (max 80 words)",
-  "standoutProduct": "Name of their most notable/standout product",
-  "productDescription": "2-3 sentence description of the standout product and what makes it special (max 80 words)",
-  "businessDescription": "2-3 sentence description of the business and its mission (max 80 words)",
-  "location": "City and province where the business operates",
-  "madeInSA": "One compelling sentence about why buying this South African-made product matters",
-  "callToAction": "Short, punchy call to action (max 10 words, e.g. 'Discover their handcrafted collection today')",
-  "websiteUrl": "Website URL if known, otherwise null"
-}`;
-
-  logger.info({ contentId, businessId: business.id, businessName: business.name }, "Regenerating content via AI");
+  logger.info({ contentId, businessId: business.id, businessName: business.name, hasResearch: !!research }, "Regenerating content via AI");
 
   let parsed: Record<string, string | null>;
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 8192,
-      messages: [{ role: "user", content: prompt }],
-    });
-    const raw = message.content[0]?.type === "text" ? message.content[0].text : "";
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found in response");
-    parsed = JSON.parse(jsonMatch[0]) as Record<string, string | null>;
+    parsed = await callClaude(buildPrompt(business, research));
   } catch (err) {
     logger.error({ err, contentId }, "AI regeneration failed, using placeholder content");
-    parsed = {
-      founderName: null,
-      founderBio: null,
-      standoutProduct: null,
-      productDescription: null,
-      businessDescription: `${business.name} is a South African business${business.industry ? ` in the ${business.industry} industry` : ""}.`,
-      location: business.province ?? null,
-      madeInSA: "Proudly South African-made — supporting local entrepreneurs and communities.",
-      callToAction: "Discover this proudly South African business today",
-      websiteUrl: business.website ?? null,
-    };
+    parsed = buildFallback(business);
   }
 
   const [updated] = await db
