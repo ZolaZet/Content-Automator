@@ -1167,7 +1167,7 @@ export const useApproveContent = <
 };
 
 /**
- * @summary Publish approved content and push to Supabase
+ * @summary Push approved content to Supabase and mark it published only after success
  */
 export const getPublishContentUrl = (id: number) => {
   return `/api/content/${id}/publish`;
@@ -1184,7 +1184,7 @@ export const publishContent = async (
 };
 
 export const getPublishContentMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1225,13 +1225,13 @@ export type PublishContentMutationResult = NonNullable<
   Awaited<ReturnType<typeof publishContent>>
 >;
 
-export type PublishContentMutationError = ErrorType<unknown>;
+export type PublishContentMutationError = ErrorType<void>;
 
 /**
- * @summary Publish approved content and push to Supabase
+ * @summary Push approved content to Supabase and mark it published only after success
  */
 export const usePublishContent = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<

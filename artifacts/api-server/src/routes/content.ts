@@ -184,7 +184,23 @@ router.post("/content/:id/publish", async (req, res) => {
     return;
   }
 
+  if (row.status !== "approved") {
+    res.status(409).json({ error: "Only approved content can be published" });
+    return;
+  }
+
   const [biz] = await db.select().from(businessesTable).where(eq(businessesTable.id, row.businessId));
+
+  // Do not mark the entry as published until the live-site push succeeds.
+  // When Supabase is not configured or the push fails, it remains approved
+  // and stays in the publication queue for a later retry.
+  const pushed = await pushToSupabase(params.data.id);
+  if (!pushed) {
+    res.status(503).json({
+      error: "Content was not published because the live website connection is unavailable. It remains approved.",
+    });
+    return;
+  }
 
   const [updated] = await db
     .update(contentTable)
@@ -207,15 +223,6 @@ router.post("/content/:id/publish", async (req, res) => {
   await db.insert(activityTable).values({
     type: "content_published",
     description: `Content published for ${biz?.name ?? "business"}`,
-  });
-
-  // Try to push to Supabase in the background — failure doesn't affect the published status
-  pushToSupabase(params.data.id).then(pushed => {
-    if (pushed) {
-      logger.info({ contentId: params.data.id }, "Content pushed to Supabase successfully");
-    }
-  }).catch(err => {
-    logger.warn({ err, contentId: params.data.id }, "Supabase push failed silently");
   });
 
   res.json(serializeContent(updated, biz?.name ?? "Unknown"));

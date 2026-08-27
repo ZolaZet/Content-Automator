@@ -155,7 +155,7 @@ export default function ContentDetail() {
     approveContent.mutate({ id: numId }, {
       onSuccess: () => {
         invalidate();
-        toast({ title: "Content approved", description: "Ready to publish to your Lovable site." });
+        toast({ title: "Content approved", description: "Moved to the publication queue. It has not been published yet." });
       },
       onError: () => toast({ title: "Approval failed", variant: "destructive" }),
     });
@@ -168,7 +168,11 @@ export default function ContentDetail() {
         toast({ title: "Content published", description: "Pushed to Supabase successfully." });
         setLocation("/content");
       },
-      onError: () => toast({ title: "Publish failed", variant: "destructive" }),
+      onError: (err: unknown) => toast({
+        title: "Publish failed",
+        description: err instanceof Error ? err.message : "The live website connection is unavailable. Content remains approved.",
+        variant: "destructive",
+      }),
     });
   };
 
@@ -303,7 +307,9 @@ export default function ContentDetail() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold" style={{ fontFamily: "var(--app-font-serif)" }}>{entry.businessName}</h1>
-              <Badge variant="outline" className={`text-xs ${STATUS_COLORS[entry.status] ?? ""}`}>{entry.status.replace("_", " ")}</Badge>
+              <Badge variant="outline" className={`text-xs ${STATUS_COLORS[entry.status] ?? ""}`}>
+                {entry.status === "approved" ? "approved · awaiting publication" : entry.status.replace("_", " ")}
+              </Badge>
             </div>
             {entry.scheduledDate && <p className="text-xs text-muted-foreground mt-0.5">Scheduled: {entry.scheduledDate}</p>}
           </div>
@@ -461,7 +467,7 @@ export default function ContentDetail() {
               {canPublish && (
                 <Button type="button" onClick={handlePublish} disabled={publishContent.isPending} className="gap-1.5 bg-primary hover:bg-primary/90" data-testid="button-publish-content">
                   <Upload className="w-4 h-4" />
-                  {publishContent.isPending ? "Publishing..." : "Publish to Supabase"}
+                  {publishContent.isPending ? "Pushing live..." : "Push to Live Website"}
                 </Button>
               )}
               {canReject && (

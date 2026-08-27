@@ -12,15 +12,16 @@ router.get("/dashboard/stats", async (_req, res) => {
 
   const totalBusinesses = businesses.filter((b) => b.status === "published").length;
   const pendingReview = allContent.filter((c) => c.status === "pending_review").length;
-  const totalPublished = allContent.filter((c) => c.status === "approved" || c.status === "published").length;
+  const approvedQueue = allContent.filter((c) => c.status === "approved").length;
+  const totalPublished = allContent.filter((c) => c.status === "published").length;
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const publishedThisMonth = allContent.filter(
     (c) =>
-      (c.status === "approved" || c.status === "published") &&
-      c.approvedAt &&
-      new Date(c.approvedAt) >= startOfMonth
+      c.status === "published" &&
+      c.publishedAt &&
+      new Date(c.publishedAt) >= startOfMonth
   ).length;
 
   const pendingBusinesses = businesses.filter((b) => b.status === "pending");
@@ -54,6 +55,7 @@ router.get("/dashboard/stats", async (_req, res) => {
   res.json({
     totalBusinesses,
     pendingReview,
+    approvedQueue,
     publishedThisMonth,
     totalPublished,
     nextScheduledDate,

@@ -272,7 +272,7 @@ paths:
     post:
       operationId: publishContent
       tags: [content]
-      summary: Publish approved content and push to Supabase
+      summary: Push approved content to Supabase and mark it published only after success
       parameters:
         - in: path
           name: id
@@ -286,6 +286,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ContentEntry"
+        "409":
+          description: Content is not approved
+        "503":
+          description: Live website connection unavailable; content remains approved
 
   /content/{id}/reject:
     post:
@@ -640,6 +644,8 @@ components:
           type: integer
         pendingReview:
           type: integer
+        approvedQueue:
+          type: integer
         publishedThisMonth:
           type: integer
         totalPublished:
@@ -651,7 +657,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ActivityItem"
-      required: [totalBusinesses, pendingReview, publishedThisMonth, totalPublished, recentActivity]
+      required: [totalBusinesses, pendingReview, approvedQueue, publishedThisMonth, totalPublished, recentActivity]
 
     ActivityItem:
       type: object

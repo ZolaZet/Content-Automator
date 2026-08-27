@@ -2,7 +2,7 @@ import { useGetDashboardStats, getGetDashboardStatsQueryKey } from "@workspace/a
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { Building2, Clock, CheckCircle2, TrendingUp, Calendar, ArrowRight, Zap } from "lucide-react";
+import { Building2, Clock, CheckCircle2, ThumbsUp, TrendingUp, Calendar, ArrowRight, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,11 +85,12 @@ export default function Dashboard() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard icon={Building2} label="Total Businesses" value={stats?.totalBusinesses} color="bg-primary/10 text-primary" isLoading={isLoading} href="/businesses" />
         <StatCard icon={Clock} label="Pending Review" value={stats?.pendingReview} color="bg-accent/20 text-accent-foreground" isLoading={isLoading} href="/content?status=pending_review" />
-        <StatCard icon={CheckCircle2} label="Published This Month" value={stats?.publishedThisMonth} color="bg-secondary/10 text-secondary" isLoading={isLoading} href="/content?status=published" />
-        <StatCard icon={TrendingUp} label="Total Published" value={stats?.totalPublished} color="bg-chart-4/10 text-chart-4" isLoading={isLoading} href="/content?status=published" />
+        <StatCard icon={ThumbsUp} label="Approved Queue" value={stats?.approvedQueue} color="bg-secondary/10 text-secondary" isLoading={isLoading} href="/content?status=approved" />
+        <StatCard icon={CheckCircle2} label="Published This Month" value={stats?.publishedThisMonth} color="bg-chart-4/10 text-chart-4" isLoading={isLoading} href="/content?status=published" />
+        <StatCard icon={TrendingUp} label="Total Published" value={stats?.totalPublished} color="bg-primary/10 text-primary" isLoading={isLoading} href="/content?status=published" />
       </div>
 
       {stats?.nextScheduledDate && (

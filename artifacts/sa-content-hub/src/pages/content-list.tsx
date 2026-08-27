@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 const STATUS_META: Record<string, { label: string; icon: React.ElementType; className: string }> = {
   pending_review: { label: "Pending Review", icon: Clock, className: "bg-accent/20 text-accent-foreground border-accent/30" },
   draft: { label: "Draft", icon: FileText, className: "bg-muted text-muted-foreground border-border" },
-  approved: { label: "Approved", icon: ThumbsUp, className: "bg-secondary/15 text-secondary border-secondary/30" },
+  approved: { label: "Approved · Awaiting Publication", icon: ThumbsUp, className: "bg-secondary/15 text-secondary border-secondary/30" },
   published: { label: "Published", icon: Send, className: "bg-primary/10 text-primary border-primary/20" },
   rejected: { label: "Rejected", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
@@ -56,7 +56,7 @@ export default function ContentList() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--app-font-serif)" }}>Content Queue</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Review and approve generated business content</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Review, approve, and publish generated business content</p>
         </div>
         <Select value={statusFilter ?? "all"} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-44" data-testid="select-status-filter">
@@ -66,7 +66,7 @@ export default function ContentList() {
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="pending_review">Pending Review</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="approved">Approved · Awaiting Publication</SelectItem>
             <SelectItem value="published">Published</SelectItem>
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>

@@ -131,6 +131,7 @@ export interface ActivityItem {
 export interface DashboardStats {
   totalBusinesses: number;
   pendingReview: number;
+  approvedQueue: number;
   publishedThisMonth: number;
   totalPublished: number;
   nextScheduledDate?: string | null;

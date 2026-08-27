@@ -45,7 +45,7 @@ lib/
 1. **Dashboard** — Stats, activity feed, one-click content generation
 2. **Business List** — Add/edit/delete SA businesses for the pipeline
 3. **Content Queue** — Filter and review AI-generated content
-4. **Content Detail** — Edit AI content, approve (pushes to Supabase) or reject
+4. **Content Detail** — Edit AI content, approve into the publication queue, push approved content live, or reject
 5. **Notifications** — In-app alerts when content is ready for review
 6. **Settings** — Supabase URL/key/table, notification email, daily schedule time
 
@@ -53,13 +53,15 @@ lib/
 
 1. Click "Generate Today's Content" → searches online for a new South African business that has not been processed before → calls Claude AI → saves as `pending_review` → creates notification
 2. Review content in Content Queue → click into detail page
-3. Edit any fields, then Approve → automatically pushes to Supabase if configured → status becomes `published`
-4. Or Reject with a note → status becomes `rejected` and that business is skipped permanently
-5. Deleting a queue entry also permanently skips its business so it cannot be generated again
+3. Edit any fields, then Approve → status becomes `approved` and waits in the publication queue
+4. Push approved content to Supabase → status becomes `published` only after the live-site push succeeds
+5. If the live-site push is unavailable, content remains `approved` so it can be retried later
+6. Or Reject with a note → status becomes `rejected` and that business is skipped permanently
+7. Deleting a queue entry also permanently skips its business so it cannot be generated again
 
 ## Supabase Push
 
-On approval, content is POSTed to `{supabaseUrl}/rest/v1/{supabaseTableName}` with columns:
+On publication, content is POSTed to `{supabaseUrl}/rest/v1/{supabaseTableName}` with columns:
 `business_name`, `founder_name`, `founder_bio`, `standout_product`, `product_description`,
 `business_description`, `location`, `made_in_sa`, `call_to_action`, `website_url`, `scheduled_date`, `published_at`
 

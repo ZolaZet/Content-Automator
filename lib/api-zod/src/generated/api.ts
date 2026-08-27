@@ -328,7 +328,7 @@ export const ApproveContentResponse = zod.object({
 });
 
 /**
- * @summary Publish approved content and push to Supabase
+ * @summary Push approved content to Supabase and mark it published only after success
  */
 export const PublishContentParams = zod.object({
   id: zod.coerce.number(),
@@ -447,6 +447,7 @@ export const GenerateContentResponse = zod.object({
 export const GetDashboardStatsResponse = zod.object({
   totalBusinesses: zod.number(),
   pendingReview: zod.number(),
+  approvedQueue: zod.number(),
   publishedThisMonth: zod.number(),
   totalPublished: zod.number(),
   nextScheduledDate: zod.string().nullish(),
