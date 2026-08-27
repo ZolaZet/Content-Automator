@@ -51,10 +51,11 @@ lib/
 
 ## Content Flow
 
-1. Click "Generate Today's Content" → picks a pending business → calls Claude AI → saves as `pending_review` → creates notification
+1. Click "Generate Today's Content" → searches online for a new South African business that has not been processed before → calls Claude AI → saves as `pending_review` → creates notification
 2. Review content in Content Queue → click into detail page
 3. Edit any fields, then Approve → automatically pushes to Supabase if configured → status becomes `published`
-4. Or Reject with a note → status becomes `rejected`
+4. Or Reject with a note → status becomes `rejected` and that business is skipped permanently
+5. Deleting a queue entry also permanently skips its business so it cannot be generated again
 
 ## Supabase Push
 

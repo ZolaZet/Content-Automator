@@ -246,6 +246,12 @@ router.post("/content/:id/reject", async (req, res) => {
     .where(eq(contentTable.id, params.data.id))
     .returning();
 
+  // Rejected businesses must never be selected for a future generation.
+  await db
+    .update(businessesTable)
+    .set({ status: "skipped" })
+    .where(eq(businessesTable.id, row.businessId));
+
   await db.insert(notificationsTable).values({
     title: "Content rejected",
     message: `Content for "${biz?.name ?? "business"}" was rejected.${note ? ` Reason: ${note}` : ""}`,
@@ -269,6 +275,12 @@ router.delete("/content/:id", async (req, res) => {
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
   await db.delete(contentTable).where(eq(contentTable.id, id));
+  // Keep a tombstone in the business list so deleting content cannot make the
+  // same business eligible again on the next generation.
+  await db
+    .update(businessesTable)
+    .set({ status: "skipped" })
+    .where(eq(businessesTable.id, row.businessId));
   res.status(204).send();
 });
 

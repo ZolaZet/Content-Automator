@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { businessesTable, contentTable, notificationsTable, activityTable, settingsTable } from "@workspace/db";
-import { eq, notInArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { logger } from "./logger";
 import { sendContentReadyEmail } from "./mailer";
@@ -206,36 +206,154 @@ export async function regenerateContentEntry(contentId: number) {
 }
 
 export async function pickNextBusiness(): Promise<number | null> {
-  // Find businesses that already have content sitting in the review queue.
-  // We don't want to generate a second batch for a business that hasn't been
-  // reviewed yet — wait until it is approved or rejected first.
-  const awaitingReview = await db
+  const businesses = await db.select().from(businessesTable);
+  const contentHistory = await db
     .select({ businessId: contentTable.businessId })
-    .from(contentTable)
-    .where(eq(contentTable.status, "pending_review"));
+    .from(contentTable);
 
-  const blockedIds = awaitingReview.map(r => r.businessId);
+  // A business is a one-time content subject. This also catches older
+  // rejected entries created before rejecting one marked the business skipped.
+  const processedIds = new Set(contentHistory.map((row) => row.businessId));
+  const pending = businesses.filter(
+    (business) => business.status === "pending" && !processedIds.has(business.id),
+  );
 
-  const available = blockedIds.length > 0
-    ? await db
-        .select()
-        .from(businessesTable)
-        .where(
-          notInArray(businessesTable.id, blockedIds)
-        )
-    : await db
-        .select()
-        .from(businessesTable);
+  // Prefer a business found live on the web. The existing pending list remains
+  // a safe fallback if web discovery is temporarily unavailable.
+  const discovered = await discoverNewBusiness(
+    businesses.map((business) => ({
+      name: business.name,
+      website: business.website,
+    })),
+  );
 
-  // Only pick from businesses that are in "pending" status
-  const pending = available.filter(b => b.status === "pending");
+  if (discovered) {
+    const [created] = await db
+      .insert(businessesTable)
+      .values({
+        name: discovered.name,
+        website: discovered.website,
+        province: discovered.province,
+        industry: discovered.industry,
+        status: "pending",
+      })
+      .returning();
 
-  if (pending.length === 0) {
-    logger.warn({ blockedCount: blockedIds.length }, "No pending businesses available — all are either awaiting review or already published");
-    return null;
+    if (created) {
+      await db.insert(activityTable).values({
+        type: "business_discovered",
+        description: `New business discovered online: ${created.name}`,
+      });
+      logger.info({ businessId: created.id, businessName: created.name }, "Discovered a new business online");
+      return created.id;
+    }
   }
 
-  // Pick the next one in order (oldest first so we work through the list sequentially)
-  const next = pending[0];
-  return next.id;
+  if (pending.length > 0) {
+    const next = pending[0];
+    logger.warn(
+      { businessId: next.id, businessName: next.name },
+      "Online discovery unavailable, using an unprocessed pending business",
+    );
+    return next.id;
+  }
+
+  logger.warn(
+    { processedCount: processedIds.size, businessCount: businesses.length },
+    "No new businesses available for content generation",
+  );
+  return null;
+}
+
+interface DiscoverableBusiness {
+  name: string;
+  website: string | null;
+  province: string | null;
+  industry: string | null;
+}
+
+function normalizeBusinessName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeWebsite(website: string | null | undefined): string | null {
+  if (!website) return null;
+  try {
+    return new URL(website).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return website.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+  }
+}
+
+async function discoverNewBusiness(
+  knownBusinesses: Array<{ name: string; website?: string | null }>,
+): Promise<DiscoverableBusiness | null> {
+  const knownNames = new Set(knownBusinesses.map((business) => normalizeBusinessName(business.name)));
+  const knownWebsites = new Set(
+    knownBusinesses
+      .map((business) => normalizeWebsite(business.website))
+      .filter((website): website is string => !!website),
+  );
+  const excludedList = knownBusinesses.map((business) => business.name).join(", ");
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const prompt = `Find one real South African business that makes, grows, designs, or sells locally made products.
+
+Use live web search and choose a business with a public website or other reliable public sources. Do not choose any business in this exclusion list, including close name variants:
+${excludedList || "(none)"}
+
+This is discovery attempt ${attempt + 1}. Look for a different candidate if a likely result is already in the list. Prefer an independent or distinctive South African business rather than a large generic multinational.
+
+Return ONLY one valid JSON object with exactly these fields:
+{
+  "name": "official business name",
+  "website": "official HTTPS website URL or null",
+  "province": "South African province or null",
+  "industry": "short industry label or null"
+}`;
+
+    try {
+      const response = await anthropic.messages.create({
+        model: "claude-haiku-4-5",
+        max_tokens: 2048,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        tools: [{ type: "web_search_20250305", name: "web_search" }] as any,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      const text = response.content
+        .filter((block) => block.type === "text")
+        .map((block) => block.text)
+        .join("\n");
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) continue;
+
+      const candidate = JSON.parse(match[0]) as Partial<DiscoverableBusiness>;
+      if (!candidate.name || typeof candidate.name !== "string") continue;
+
+      const candidateName = normalizeBusinessName(candidate.name);
+      const candidateWebsite = typeof candidate.website === "string" ? candidate.website : null;
+      const candidateHostname = normalizeWebsite(candidateWebsite);
+      if (knownNames.has(candidateName) || (candidateHostname && knownWebsites.has(candidateHostname))) {
+        knownNames.add(candidateName);
+        if (candidateHostname) knownWebsites.add(candidateHostname);
+        continue;
+      }
+
+      return {
+        name: candidate.name.trim(),
+        website: candidateWebsite,
+        province: typeof candidate.province === "string" ? candidate.province.trim() : null,
+        industry: typeof candidate.industry === "string" ? candidate.industry.trim() : null,
+      };
+    } catch (err) {
+      logger.warn({ err, attempt: attempt + 1 }, "Online business discovery failed");
+    }
+  }
+
+  return null;
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { businessesTable } from "@workspace/db";
+import { businessesTable, activityTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
   ListBusinessesQueryParams,
@@ -131,7 +131,25 @@ router.delete("/businesses/:id", async (req, res) => {
     return;
   }
 
-  await db.delete(businessesTable).where(eq(businessesTable.id, params.data.id));
+  const [existing] = await db
+    .select()
+    .from(businessesTable)
+    .where(eq(businessesTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  // Retain a skipped tombstone instead of physically deleting the row. This
+  // prevents online discovery from re-adding a business the user removed.
+  await db
+    .update(businessesTable)
+    .set({ status: "skipped" })
+    .where(eq(businessesTable.id, params.data.id));
+  await db.insert(activityTable).values({
+    type: "business_removed",
+    description: `Business removed from the generator: ${existing.name}`,
+  });
   res.status(204).send();
 });
 
