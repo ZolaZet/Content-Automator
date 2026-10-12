@@ -1,0 +1,1 @@
+- [Orval generation targets](orval-generation-targets.md) — Pin React Query and Zod output majors; Orval may infer incompatible defaults in the workspace.
